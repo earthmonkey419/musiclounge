@@ -1,0 +1,48 @@
+<svg viewBox="0 0 400 560" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#29231F" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Outer body: classic rounded-dome jukebox silhouette -->
+  <path d="M 60 560
+           L 60 260
+           C 60 120, 100 20, 200 20
+           C 300 20, 340 120, 340 260
+           L 340 560" />
+
+  <!-- Base cabinet -->
+  <path d="M 40 560 L 40 480 C 40 465, 50 455, 65 455 L 335 455 C 350 455, 360 465, 360 480 L 360 560" />
+
+  <!-- Top dome arch (inner) -->
+  <path d="M 100 250 C 100 150, 130 60, 200 60 C 270 60, 300 150, 300 250" />
+
+  <!-- Speaker grille: vertical ribs inside the dome -->
+  <line x1="130" y1="240" x2="130" y2="120" />
+  <line x1="155" y1="240" x2="155" y2="95" />
+  <line x1="180" y1="240" x2="180" y2="80" />
+  <line x1="200" y1="240" x2="200" y2="75" />
+  <line x1="220" y1="240" x2="220" y2="80" />
+  <line x1="245" y1="240" x2="245" y2="95" />
+  <line x1="270" y1="240" x2="270" y2="120" />
+
+  <!-- Control panel window -->
+  <rect x="110" y="290" width="180" height="90" rx="10" />
+
+  <!-- Record/disc suggestion inside the window -->
+  <circle cx="200" cy="335" r="34" />
+  <circle cx="200" cy="335" r="6" />
+
+  <!-- Buttons row -->
+  <circle cx="90" cy="410" r="10" />
+  <circle cx="125" cy="410" r="10" />
+  <circle cx="160" cy="410" r="10" />
+  <circle cx="240" cy="410" r="10" />
+  <circle cx="275" cy="410" r="10" />
+  <circle cx="310" cy="410" r="10" />
+
+  <!-- Coin slot -->
+  <rect x="185" y="430" width="30" height="10" rx="4" />
+
+  <!-- Base trim line -->
+  <line x1="40" y1="500" x2="360" y2="500" />
+
+  <!-- Legs -->
+  <line x1="70" y1="560" x2="70" y2="540" />
+  <line x1="330" y1="560" x2="330" y2="540" />
+</svg>

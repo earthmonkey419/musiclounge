@@ -8,8 +8,10 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+  <img class="bg-jukebox" src="{{ url_for('static', filename='img/background.svg') }}" alt="" aria-hidden="true">
   <div class="wrap">
     {% block content %}{% endblock %}
+    {% include "partials/_footer.html" %}
   </div>
 </body>
 </html>

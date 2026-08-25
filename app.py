@@ -12,6 +12,7 @@ Route map (per scope doc):
 """
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
+from datetime import datetime
 import config
 
 
@@ -27,6 +28,10 @@ def create_app():
     # localhost access — those headers just won't be present, and
     # ProxyFix falls back to the real request info.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+    @app.context_processor
+    def inject_globals():
+        return {"current_year": datetime.utcnow().year}
 
     from blueprints.home import bp as home_bp
     from blueprints.admin import bp as admin_bp
