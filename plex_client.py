@@ -135,14 +135,23 @@ def search_content(content_type, query, limit=8):
     (album/playlist/artist), separate from search_tracks()'s free-text
     track search. Returns dicts with content_ref/title/subtitle.
 
-    NOT YET VERIFIED against a real Plex server — same caveat as the
-    rest of this module."""
+    Every branch explicitly checks item.type before including a
+    result — real-world testing surfaced that a plain
+    section.search(libtype=...) call can return a mismatched type
+    (an Artist result for an album search), so type is verified
+    directly rather than trusted from the query method alone."""
     content_type = content_type.lower()
     results = []
     try:
         if content_type == "album":
             section = get_music_section()
-            for item in section.search(title=query, libtype="album", limit=limit):
+            try:
+                items = section.searchAlbums(title=query, limit=limit * 2)
+            except AttributeError:
+                items = section.search(title=query, libtype="album", limit=limit * 2)
+            for item in items:
+                if getattr(item, "type", None) != "album":
+                    continue
                 results.append({
                     "content_ref": item.ratingKey,
                     "title": item.title,
@@ -150,7 +159,9 @@ def search_content(content_type, query, limit=8):
                 })
         elif content_type == "artist":
             section = get_music_section()
-            for item in section.searchArtists(title=query, limit=limit):
+            for item in section.searchArtists(title=query, limit=limit * 2):
+                if getattr(item, "type", None) != "artist":
+                    continue
                 results.append({
                     "content_ref": item.ratingKey,
                     "title": item.title,
@@ -162,6 +173,8 @@ def search_content(content_type, query, limit=8):
             # support varies by version.
             q = query.lower()
             for item in get_plex().playlists():
+                if getattr(item, "type", None) != "playlist":
+                    continue
                 if q in item.title.lower():
                     results.append({
                         "content_ref": item.ratingKey,

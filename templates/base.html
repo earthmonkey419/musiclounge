@@ -6,6 +6,14 @@
   <title>{% block title %}MusicLounge{% endblock %}</title>
   <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  {% block og_tags %}
+  <meta property="og:title" content="MusicLounge — Jukebox for Plex">
+  <meta property="og:description" content="Your music. Your people. Any room. Any time.">
+  <meta property="og:image" content="{{ url_for('static', filename='hero-logo.jpg', _external=True) }}">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  {% endblock %}
 </head>
 <body>
   <img class="bg-jukebox" src="{{ url_for('static', filename='img/background.svg') }}" alt="" aria-hidden="true">

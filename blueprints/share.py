@@ -43,12 +43,22 @@ def create_share():
     if not content_ref:
         return jsonify({"error": "Pick something to share first."}), 400
 
-    # Validate the content actually resolves in Plex before minting a link
+    # Validate the content actually resolves in Plex, AND that it's
+    # genuinely the type claimed — closes the loop on the same class of
+    # bug search_content() guards against (a mismatched item type
+    # slipping through).
     try:
-        plex_client.get_plex().fetchItem(int(content_ref))
+        item = plex_client.get_plex().fetchItem(int(content_ref))
     except Exception:
         current_app.logger.exception("Share create: content_ref invalid %r", content_ref)
         return jsonify({"error": "Couldn't find that in your library."}), 404
+
+    if getattr(item, "type", None) != content_type:
+        current_app.logger.warning(
+            "Share create: type mismatch — claimed %r but item is %r (ref=%r)",
+            content_type, getattr(item, "type", None), content_ref,
+        )
+        return jsonify({"error": "That didn't match the content type you picked — try searching again."}), 400
 
     token = db.create_share(content_type, str(content_ref), content_title, content_artist, duration)
     share_url = request.host_url.rstrip("/") + url_for("linked.view_share", share_token=token)

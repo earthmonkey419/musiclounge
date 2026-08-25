@@ -1,5 +1,12 @@
 {% extends "base.html" %}
 {% block title %}{{ content_title }} — MusicLounge{% endblock %}
+{% block og_tags %}
+<meta property="og:title" content="{{ content_title }}{% if content_artist %} — {{ content_artist }}{% endif %}">
+<meta property="og:description" content="Someone shared this with you on MusicLounge. Tap to listen — no account needed.">
+<meta property="og:image" content="{{ url_for('room.art', rating_key=share['content_ref'], _external=True) }}">
+<meta property="og:type" content="music.song">
+<meta name="twitter:card" content="summary_large_image">
+{% endblock %}
 {% block content %}
 <div style="display:flex; justify-content:space-between; align-items:center;">
   {% include "partials/_wordmark.html" %}

@@ -1,119 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1200" width="100%" height="100%" preserveAspectRatio="xMidYMin slice">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1200" width="100%" height="100%" preserveAspectRatio="xMidYMin slice">
   <defs>
-    <!-- Mint Radial Background Glow -->
+    <!-- Background Mint Canvas Glow -->
     <radialGradient id="bgGlow" cx="50%" cy="45%" r="65%">
-      <stop offset="0%" stop-color="#83fae0"/>
-      <stop offset="60%" stop-color="#51efcd"/>
-      <stop offset="100%" stop-color="#36dea6"/>
+      <stop offset="0%" stop-color="#80fada"/>
+      <stop offset="60%" stop-color="#70ffd2"/>
+      <stop offset="100%" stop-color="#52eecc"/>
     </radialGradient>
-
-    <!-- Diamond Pattern for Lower Speaker Grille -->
-    <pattern id="grilleMesh" width="30" height="30" patternUnits="userSpaceOnUse">
-      <path d="M 15 0 L 30 15 L 15 30 L 0 15 Z" fill="none" stroke="#2db893" stroke-width="2" opacity="0.6"/>
-    </pattern>
   </defs>
 
   <!-- Background Canvas -->
-  <rect width="1400" height="1200" fill="url(#bgGlow)"/>
+  <rect width="1000" height="1200" fill="url(#bgGlow)"/>
 
-  <!-- Jukebox Line Art Container -->
-  <g stroke="#2db893" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.45">
+  <!-- Subtle Jukebox Graphic Container -->
+  <g opacity="0.35" transform="translate(150, 80)">
 
-    <!-- Main Outer Dome Shell -->
-    <path d="M 280 1200 L 280 480 A 420 420 0 0 1 1120 480 L 1120 1200 Z" stroke-width="6"/>
-    
-    <!-- Outer Neon Rainbow Bubbler Tubes (Concentric Arches) -->
-    <path d="M 315 1200 L 315 480 A 385 385 0 0 1 1085 480 L 1085 1200"/>
-    <path d="M 345 1200 L 345 480 A 355 355 0 0 1 1055 480 L 1055 1200"/>
-    <path d="M 375 1200 L 375 480 A 325 325 0 0 1 1025 480 L 1025 1200"/>
+    <!-- Outer Yellow Arch Body -->
+    <path d="M 50 1100 L 50 350 A 300 300 0 0 1 650 350 L 650 1100 Z" fill="#FFCC4D"/>
 
-    <!-- Top Crown Casting / Ornament Header -->
-    <path d="M 640 60 Q 700 30 760 60 L 780 100 Q 700 130 620 100 Z"/>
-    <path d="M 670 70 Q 700 50 730 70"/>
+    <!-- Top Orange Center Accent Stripe -->
+    <rect x="310" y="50" width="80" height="120" fill="#FF9137"/>
 
-    <!-- Mid-Side Chrome Shoulder Castings & Ribbed Bands -->
-    <!-- Left Shoulder -->
-    <path d="M 260 370 C 260 370 300 370 345 370 L 345 490 C 300 490 260 490 260 490 Z" stroke-width="5"/>
-    <line x1="260" y1="400" x2="345" y2="400"/>
-    <line x1="260" y1="430" x2="345" y2="430"/>
-    <line x1="260" y1="460" x2="345" y2="460"/>
+    <!-- Horizontal Orange Trim Bands -->
+    <rect x="50" y="420" width="600" height="40" fill="#FF9137"/>
+    <rect x="50" y="1020" width="600" height="40" fill="#FF9137"/>
 
-    <!-- Right Shoulder -->
-    <path d="M 1140 370 C 1140 370 1100 370 1055 370 L 1055 490 C 1100 490 1140 490 1140 490 Z" stroke-width="5"/>
-    <line x1="1055" y1="400" x2="1140" y2="400"/>
-    <line x1="1055" y1="430" x2="1140" y2="430"/>
-    <line x1="1055" y1="460" x2="1140" y2="460"/>
+    <!-- Inner Dark Frame (Inner Arch Body) -->
+    <path d="M 175 1100 L 175 275 A 175 175 0 0 1 525 275 L 525 1100 Z" fill="#2d3732"/>
 
-    <!-- Upper Illuminated Dome Window Arch -->
-    <path d="M 430 360 A 270 270 0 0 1 970 360 L 970 200 A 270 270 0 0 0 430 200 Z" stroke-width="5"/>
-    
-    <!-- Arch Grille Louvre Rows (Horizontal Louvres) -->
-    <line x1="460" y1="230" x2="940" y2="230"/>
-    <line x1="440" y1="265" x2="960" y2="265"/>
-    <line x1="432" y1="300" x2="968" y2="300"/>
-    <line x1="430" y1="335" x2="970" y2="335"/>
+    <!-- Upper Arch Window (Light Yellow) -->
+    <path d="M 230 420 L 230 290 A 120 120 0 0 1 470 290 L 470 420 Z" fill="#FFFC8C"/>
 
-    <!-- Main Title Card Deck & Dashboard Panel Frame -->
-    <rect x="410" y="380" width="580" height="200" rx="12" stroke-width="5"/>
+    <!-- Middle Display Bar (Warm Yellow) -->
+    <rect x="230" y="450" width="240" height="100" fill="#FFCC4D"/>
 
-    <!-- Top Display Header Bar & Horizontal Speed Ribs -->
-    <rect x="490" y="405" width="420" height="45" rx="4"/>
-    <line x1="510" y1="420" x2="570" y2="420"/>
-    <line x1="510" y1="435" x2="570" y2="435"/>
-    <line x1="830" y1="420" x2="890" y2="420"/>
-    <line x1="830" y1="435" x2="890" y2="435"/>
-
-    <!-- Digital Display / Song Title Strip Display -->
-    <rect x="550" y="475" width="300" height="40" rx="6"/>
-
-    <!-- Dual Selection Button Panels (Left & Right Column Red Buttons) -->
-    <circle cx="440" cy="410" r="10"/>
-    <circle cx="440" cy="440" r="10"/>
-    <circle cx="440" cy="470" r="10"/>
-    <circle cx="470" cy="470" r="10"/>
-    <rect x="430" y="525" width="45" height="45" rx="4"/>
-
-    <circle cx="960" cy="410" r="10"/>
-    <circle cx="960" cy="440" r="10"/>
-    <circle cx="960" cy="470" r="10"/>
-    <circle cx="930" cy="470" r="10"/>
-    <rect x="925" y="525" width="45" height="45" rx="4"/>
-
-    <!-- Three Center Knobs -->
-    <circle cx="620" cy="545" r="16"/>
-    <circle cx="700" cy="545" r="16"/>
-    <circle cx="780" cy="545" r="16"/>
-
-    <!-- Classic U-Shaped Illuminated Glass Arch (Lower Section) -->
-    <path d="M 450 600 L 450 940 A 250 250 0 0 0 950 940 L 950 600" stroke-width="6"/>
-    <path d="M 500 600 L 500 930 A 200 200 0 0 0 900 930 L 900 600" stroke-width="5"/>
-
-    <!-- Speaker Fretwork Mesh Fill -->
-    <rect x="500" y="600" width="400" height="330" fill="url(#grilleMesh)" stroke="none"/>
-
-    <!-- Lower Medallion & Filigree Decorative Casting -->
-    <circle cx="700" cy="850" r="50" stroke-width="5"/>
-    <circle cx="700" cy="850" r="28"/>
-    <!-- Scrollwork Flourishes -->
-    <path d="M 650 850 C 600 840 560 880 540 910"/>
-    <path d="M 750 850 C 800 840 840 880 860 910"/>
-    <path d="M 670 890 C 680 930 700 960 700 1000"/>
-    <path d="M 730 890 C 720 930 700 960 700 1000"/>
-
-    <!-- Bottom Coin Return / Plaque Casting -->
-    <rect x="640" y="1110" width="120" height="40" rx="6" stroke-width="4"/>
-    <rect x="660" y="1120" width="80" height="20" rx="3"/>
-
-    <!-- Heavy Wooden Base & Foot Pillars -->
-    <path d="M 230 970 C 230 970 230 1150 230 1180 L 410 1180 L 410 970 Z" stroke-width="5"/>
-    <path d="M 1170 970 C 1170 970 1170 1150 1170 1180 L 990 1180 L 990 970 Z" stroke-width="5"/>
-    <line x1="230" y1="1000" x2="410" y2="1000"/>
-    <line x1="230" y1="1150" x2="410" y2="1150"/>
-    <line x1="990" y1="1000" x2="1170" y2="1000"/>
-    <line x1="990" y1="1150" x2="1170" y2="1150"/>
-
-    <!-- Bottom Floor Line -->
-    <line x1="200" y1="1180" x2="1200" y2="1180" stroke-width="6"/>
+    <!-- Lower Glass Tube Arch (Mint / Light Neutral Fill) -->
+    <path d="M 230 600 L 230 840 A 120 120 0 0 0 470 840 L 470 600 Z" fill="#70FFD2"/>
+    <path d="M 280 600 L 280 820 A 70 70 0 0 0 420 820 L 420 600 Z" fill="#2d3732"/>
 
   </g>
 </svg>
