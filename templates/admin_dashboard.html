@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}Room Mode — MusicLounge{% endblock %}
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+  {% include "partials/_wordmark.html" %}
+  {% if room %}
+  <form method="post" onsubmit="return confirm('End this room for everyone?');">
+    <input type="hidden" name="action" value="end">
+    <button type="submit" class="btn" style="padding:8px 14px; font-size:13px;">End Room</button>
+  </form>
+  {% else %}
+  <a href="{{ url_for('admin.logout') }}" class="btn">Log out</a>
+  {% endif %}
+</div>
+
+{% if room %}
+<div style="text-align:center; margin-bottom:28px;">
+  <h1 style="font-family:var(--font-display); font-size:48px; font-weight:700; margin:0;">{{ room["room_name"] }}</h1>
+</div>
+{% endif %}
+
+{% if not room %}
+<div class="card surface-hi" style="max-width:420px; margin:40px auto; text-align:center;">
+  <h2 style="margin-bottom:14px;">No room running right now</h2>
+  <form method="post" style="display:flex; flex-direction:column; gap:12px;">
+    <input type="hidden" name="action" value="start">
+    <input type="text" name="room_name" placeholder="Room name, e.g. Louis's Lounge">
+    <button type="submit" class="btn btn-primary">Start a Room</button>
+  </form>
+</div>
+
+{% else %}
+<audio id="player" preload="auto"></audio>
+
+<div id="tap-to-play-banner" style="display:none; background:var(--orange); border:var(--border-w) solid var(--ink); border-radius:var(--radius-sm); padding:12px 16px; margin-bottom:16px; text-align:center; cursor:pointer; font-weight:700;" onclick="unlockAudio()">
+  ▶ Tap here to start playback — your browser blocked autoplay
+</div>
+
+<div class="room-grid">
+  <div>
+    <div class="card">
+      <div style="font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--orange-deep); margin-bottom:14px;">NOW PLAYING</div>
+      <div class="now-playing">
+        <img id="np-art" class="art" src="{{ '/art/' + room['now_playing_ref']|string if room['now_playing_ref'] else '' }}" onerror="this.style.opacity=0" style="{{ '' if room['now_playing_ref'] else 'opacity:0;' }}">
+        <div>
+          <h2 id="np-title" style="font-size:24px;">{{ room["now_playing_title"] or "Nothing queued yet" }}</h2>
+          <p id="np-artist" style="margin:2px 0; color:var(--ink-soft);">{{ room["now_playing_artist"] or "Add a song from the guest portal to get started" }}</p>
+          <div class="transport">
+            <button class="btn btn-round" onclick="postAction('/api/skip')">⏮</button>
+            <button id="playpause-btn" class="btn btn-round btn-primary" onclick="togglePlayPause()">{{ "⏸" if room["is_playing"] else "▶" }}</button>
+            <button class="btn btn-round" onclick="postAction('/api/skip')">⏭</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <div style="font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--orange-deep); margin-bottom:10px;">UP NEXT</div>
+      <div id="queue-list">
+        {% for item in queue %}
+        <div class="queue-item">
+          <span class="pos">{{ "%02d"|format(loop.index) }}</span><img class="art-sm" src="/art/{{ item['track_ref'] }}" onerror="this.style.opacity=0">
+          <div style="flex:1;">{{ item["title"] }} <span style="color:var(--ink-soft);">— {{ item["artist"] }}</span></div>
+        </div>
+        {% else %}
+        <p style="color:var(--ink-soft); font-size:14px;">Queue's empty — send guests to the join link below.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card surface-hi">
+    <div style="font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--orange-deep); margin-bottom:12px;">INVITE PEOPLE</div>
+    <p style="font-size:13px; color:var(--ink-soft);">Scan to join instantly, or share the code.</p>
+    <div style="text-align:center; margin:16px 0;">
+      <img src="{{ qr_data_uri }}" alt="Scan to join" style="width:180px; height:180px; border:var(--border-w) solid var(--ink); border-radius:var(--radius-sm); background:white; padding:8px;">
+    </div>
+    <div style="text-align:center; margin-bottom:16px;">
+      <span class="code-chip">{{ room["join_code"] }}</span>
+    </div>
+    <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="copyJoinLink()">🔗 Copy Join Link</button>
+  </div>
+</div>
+
+<script>
+const ROOM_ID = {{ room["session_id"]|tojson }};
+const JOIN_URL = {{ join_url|tojson }};
+const INITIAL_VOLUME = {{ room["volume"]|tojson }};
+
+const audioEl = document.getElementById("player");
+let currentTrackRef = {{ room["now_playing_ref"]|tojson }};
+audioEl.volume = INITIAL_VOLUME / 100;
+
+// If the room starts already "playing" (e.g. a track was queued by a
+// guest before the dashboard was ever opened), point the element at it
+// immediately so unlockAudio() / the first successful play() has
+// something loaded to act on.
+if (currentTrackRef) {
+  audioEl.src = "/stream/" + currentTrackRef;
+}
+
+function attemptPlay() {
+  const p = audioEl.play();
+  if (p !== undefined) {
+    p.catch(() => {
+      // Browser blocked autoplay — needs a real user gesture. Known
+      // issue class (RiderMusic hit the same thing). Show the banner
+      // rather than silently failing forever.
+      document.getElementById("tap-to-play-banner").style.display = "block";
+    });
+  }
+}
+
+function unlockAudio() {
+  document.getElementById("tap-to-play-banner").style.display = "none";
+  attemptPlay();
+}
+
+function togglePlayPause() {
+  // Optimistic local toggle for instant feedback, then tell the server.
+  if (audioEl.paused) attemptPlay(); else audioEl.pause();
+  postAction("/api/playpause");
+}
+
+audioEl.addEventListener("ended", () => {
+  postAction("/api/skip");
+});
+
+function postAction(path) {
+  fetch(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"})
+    .then(r => r.json())
+    .then(refreshState)
+    .catch(console.error);
+}
+
+function copyJoinLink() {
+  navigator.clipboard.writeText(JOIN_URL).then(() => alert("Join link copied: " + JOIN_URL));
+}
+
+function syncAudio(state) {
+  if (!state.now_playing) {
+    audioEl.pause();
+    audioEl.removeAttribute("src");
+    currentTrackRef = null;
+    return;
+  }
+  if (state.now_playing.ref !== currentTrackRef) {
+    currentTrackRef = state.now_playing.ref;
+    audioEl.src = "/stream/" + currentTrackRef;
+    audioEl.load();
+    if (state.now_playing.is_playing) attemptPlay();
+  } else {
+    if (state.now_playing.is_playing && audioEl.paused) attemptPlay();
+    if (!state.now_playing.is_playing && !audioEl.paused) audioEl.pause();
+  }
+  audioEl.volume = state.now_playing.volume / 100;
+}
+
+function refreshState() {
+  fetch("/api/room-state")
+    .then(r => r.json())
+    .then(state => {
+      if (state.error) return;
+      document.getElementById("np-title").textContent = state.now_playing ? state.now_playing.title : "Nothing queued yet";
+      document.getElementById("np-artist").textContent = state.now_playing ? state.now_playing.artist : "Add a song from the guest portal to get started";
+      document.getElementById("playpause-btn").textContent = state.now_playing && state.now_playing.is_playing ? "⏸" : "▶";
+      const npArt = document.getElementById("np-art");
+      if (state.now_playing) {
+        npArt.style.opacity = 1;
+        npArt.src = "/art/" + state.now_playing.ref;
+      } else {
+        npArt.style.opacity = 0;
+      }
+      const list = document.getElementById("queue-list");
+      if (state.queue.length === 0) {
+        list.innerHTML = "<p style=\"color:var(--ink-soft); font-size:14px;\">Queue's empty — send guests to the join link below.</p>";
+      } else {
+        list.innerHTML = state.queue.map((item, i) => `
+          <div class="queue-item">
+            <span class="pos">${String(i+1).padStart(2,"0")}</span><img class="art-sm" src="/art/${item.track_ref}" onerror="this.style.opacity=0">
+            <div style="flex:1;">${item.title} <span style="color:var(--ink-soft);">— ${item.artist}</span></div>
+          </div>`).join("");
+      }
+      syncAudio(state);
+    })
+    .catch(console.error);
+}
+
+// Try immediately on load (covers the case where a track was already
+// queued before this page opened) — will hit the autoplay banner if
+// the browser blocks it, which is expected and handled.
+if (currentTrackRef && {{ (room["is_playing"] == 1)|tojson }}) {
+  attemptPlay();
+}
+
+setInterval(refreshState, 4000);
+</script>
+{% endif %}
+{% endblock %}

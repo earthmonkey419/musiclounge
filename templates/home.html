@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}MusicLounge — Jukebox for Plex{% endblock %}
+{% block content %}
+<div class="home-hero">
+  <img src="{{ url_for('static', filename='hero-logo.jpg') }}" alt="MusicLounge — Jukebox for Plex" class="hero-logo">
+  <p>Your music. Your people. Any room. Any time.</p>
+</div>
+
+<div class="mode-cards">
+  <a class="mode-card room" href="{{ url_for('admin.dashboard') }}">
+    <div class="icon">👥</div>
+    <h2>Start a Room</h2>
+    <p>Let everyone join the jukebox — scan a code, search the library, queue what plays next.</p>
+  </a>
+  <a class="mode-card share" href="{{ url_for('share.new_share') }}">
+    <div class="icon">🎁</div>
+    <h2>Share Some Music</h2>
+    <p>Send an album, artist, or playlist as a private link — theirs to enjoy for a day or three.</p>
+  </a>
+</div>
+
+<p style="text-align:center; margin-top: 40px; font-size: 13px; color: var(--ink-soft);">
+  Brought to you by the makers of MusicMind for Plex &amp; RiderMusic Jukebox
+</p>
+{% endblock %}

@@ -1,0 +1,303 @@
+/* MusicLounge Jukebox for Plex — design system
+   Hierarchy rule (do not break): mint = environment, cream = surface,
+   gold = selection/state, orange = action. Never even coverage. */
+
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --mint: #70FFD2;
+  --mint-deep: #4FE0B8;
+  --cream: #FFFC8C;
+  --cream-hi: #FFFDF0;
+  --cream-deep: #F5E96B;
+  --gold: #FFCC4D;
+  --gold-deep: #E8B430;
+  --orange: #FF9137;
+  --orange-deep: #E67A1F;
+  --ink: #29231F;
+  --ink-soft: #574E45;
+
+  --radius-lg: 28px;
+  --radius-md: 20px;
+  --radius-sm: 12px;
+  --border-w: 2px;
+
+  --font-display: 'Fredoka', sans-serif;
+  --font-body: 'Manrope', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--mint);
+  background-image:
+    radial-gradient(circle at 15% 10%, var(--mint-deep) 0%, transparent 40%),
+    radial-gradient(circle at 85% 90%, var(--mint-deep) 0%, transparent 35%);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+h1, h2, h3, .display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin: 0;
+  color: var(--ink);
+}
+
+a { color: inherit; }
+
+.wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--ink);
+}
+.brand-icon {
+  height: 44px;
+  width: 44px;
+  border-radius: 12px;
+  display: block;
+}
+.brand-text {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 24px;
+  color: var(--ink);
+}
+/* Hero variant — used once on the home page, much larger */
+.home-hero .brand-link { flex-direction: column; gap: 12px; }
+.home-hero .brand-icon { height: 100px; width: 100px; border-radius: 24px; }
+.home-hero .brand-text { font-size: 40px; }
+
+.hero-logo {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  border-radius: var(--radius-lg);
+  border: var(--border-w) solid var(--ink);
+}
+
+/* --- Wordmark (text fallback) --- */
+.wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+}
+.wordmark .sub {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--orange-deep);
+}
+
+/* --- Cards / surfaces --- */
+.card {
+  background: var(--cream);
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+.card.surface-hi { background: var(--cream-hi); }
+.card.on-mint { background: var(--mint); }
+
+/* --- Buttons --- */
+.btn {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 15px;
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 12px 22px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--ink);
+  background: var(--cream-hi);
+  transition: transform 0.08s ease;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-primary {
+  background: var(--orange);
+  color: var(--ink);
+}
+.btn-primary:hover { background: var(--orange-deep); }
+.btn-round {
+  border-radius: 999px;
+  width: 52px;
+  height: 52px;
+  justify-content: center;
+  padding: 0;
+}
+
+/* --- Chips / pills (mood tiles, duration selectors) --- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 14px 10px;
+  background: var(--mint);
+  cursor: pointer;
+  text-align: center;
+}
+.chip.selected {
+  background: var(--orange);
+}
+.chip-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+/* --- The signature: mono code chip (join codes, share codes) --- */
+.code-chip {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.12em;
+  background: var(--gold);
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  display: inline-block;
+}
+.countdown {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* --- Inputs --- */
+input[type="text"], input[type="search"], input[type="password"], input[type="email"] {
+  font-family: var(--font-body);
+  font-size: 15px;
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  background: var(--cream-hi);
+  width: 100%;
+}
+
+/* --- Home: two big cards --- */
+.home-hero { text-align: center; margin-bottom: 40px; }
+.home-hero .wordmark { justify-content: center; font-size: 44px; margin-bottom: 8px; }
+.home-hero p { font-size: 18px; color: var(--ink-soft); margin-top: 4px; }
+
+.mode-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.mode-card {
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  text-decoration: none;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 180px;
+}
+.mode-card .icon { font-size: 36px; }
+.mode-card h2 { font-size: 22px; }
+.mode-card p { margin: 0; color: var(--ink-soft); font-size: 14px; }
+.mode-card.room { background: var(--gold); }
+.mode-card.share { background: var(--mint); }
+
+@media (max-width: 640px) {
+  .mode-cards { grid-template-columns: 1fr; }
+  .chip-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* --- Room dashboard --- */
+.room-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+.now-playing { display: flex; gap: 20px; }
+.now-playing .art {
+  width: 140px; height: 140px;
+  border-radius: var(--radius-md);
+  border: var(--border-w) solid var(--ink);
+  background: var(--ink);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.transport { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+.queue-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--cream-deep);
+}
+.queue-item .pos { font-family: var(--font-mono); color: var(--ink-soft); width: 20px; }
+.queue-item .art-sm {
+  width: 40px; height: 40px; border-radius: 8px;
+  background: var(--ink); object-fit: cover; flex-shrink: 0;
+}
+
+/* --- /linked: locked player --- */
+.linked-player { max-width: 480px; margin: 40px auto; text-align: center; }
+.linked-player .art-lg {
+  width: 240px; height: 240px;
+  border-radius: var(--radius-lg);
+  border: var(--border-w) solid var(--ink);
+  background: var(--ink);
+  margin: 0 auto 20px;
+}
+.track-list { text-align: left; margin: 20px 0; }
+.track-row {
+  display: flex; justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--cream-deep);
+  font-size: 14px;
+}
+
+/* --- Share Mode 3-stage flow --- */
+.stage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.stage-num {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 999px;
+  background: var(--orange);
+  border: var(--border-w) solid var(--ink);
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+@media (max-width: 780px) {
+  .room-grid { grid-template-columns: 1fr; }
+  .stage-grid { grid-template-columns: 1fr; }
+}

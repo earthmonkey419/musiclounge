@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}MusicLounge — Join{% endblock %}
+{% block content %}
+{% include "partials/_wordmark.html" %}
+<div class="card surface-hi" style="max-width: 400px; margin: 60px auto; text-align:center;">
+  <h2 style="margin-bottom: 8px;">You're joining a room</h2>
+  <p style="color: var(--ink-soft); margin-bottom: 20px;">Enter the code shown on the host's screen.</p>
+  {% if error %}<p style="color: var(--orange-deep); font-weight:700; margin-bottom:14px;">{{ error }}</p>{% endif %}
+  <form method="post" style="display:flex; flex-direction:column; gap:14px;">
+    <input type="text" name="join_code" placeholder="e.g. 7XQ3K2" style="text-align:center; font-family: var(--font-mono); font-size: 20px; letter-spacing: 0.1em;" autofocus>
+    <button type="submit" class="btn btn-primary">Join the room</button>
+  </form>
+</div>
+{% endblock %}

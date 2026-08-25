@@ -1,0 +1,6 @@
+Flask==3.0.3
+plexapi==4.15.16
+gunicorn==22.0.0
+requests==2.34.2
+qrcode==8.2
+pillow==12.3.0

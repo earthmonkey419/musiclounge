@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Share Some Music — MusicLounge{% endblock %}
+{% block content %}
+{% include "partials/_wordmark.html" %}
+<div style="text-align:center; margin:20px 0 24px;">
+  <h1 style="font-family:var(--font-display); font-size:36px; font-weight:700; margin:0;">🎁 Share Some Music</h1>
+  <p style="color:var(--ink-soft); margin-top:4px;">Send an album, artist, or playlist — theirs for a little while.</p>
+</div>
+
+<div id="flow-stages" class="stage-grid">
+  <div class="card surface-hi">
+    <div class="stage-num">1</div>
+    <h3 style="font-size:16px; margin-bottom:4px;">What are you sharing?</h3>
+    <p style="font-size:13px; color:var(--ink-soft); margin:0 0 14px;">Choose the type of content.</p>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div class="chip" style="width:100%;" onclick="selectType('album', this)">ALBUM</div>
+      <div class="chip" style="width:100%;" onclick="selectType('playlist', this)">PLAYLIST</div>
+      <div class="chip" style="width:100%;" onclick="selectType('artist', this)">ARTIST</div>
+    </div>
+  </div>
+
+  <div class="card surface-hi">
+    <div class="stage-num">2</div>
+    <h3 style="font-size:16px; margin-bottom:4px;">Choose it</h3>
+    <p style="font-size:13px; color:var(--ink-soft); margin:0 0 14px;">Search your Plex library.</p>
+    <input type="search" id="content-search" placeholder="Pick a type first…" disabled oninput="debouncedContentSearch()">
+    <div id="content-results" style="margin-top:12px;"></div>
+  </div>
+
+  <div class="card surface-hi">
+    <div class="stage-num">3</div>
+    <h3 style="font-size:16px; margin-bottom:4px;">How long?</h3>
+    <p style="font-size:13px; color:var(--ink-soft); margin:0 0 14px;">Link expires after:</p>
+    <div style="display:flex; gap:8px;">
+      {% for hrs in durations %}
+      <div class="chip" style="flex:1;" onclick="selectDuration({{ hrs }}, this)">{{ hrs }} HRS</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div style="text-align:center; margin-top:24px;">
+  <button id="create-link-btn" class="btn btn-primary" style="font-size:16px; padding:14px 32px;" disabled onclick="createLink()">🔗 Create Link</button>
+  <p id="create-error" style="color:var(--orange-deep); font-weight:700; margin-top:10px; display:none;"></p>
+</div>
+
+<div id="confirm-panel" class="card" style="max-width:480px; margin:24px auto 0; text-align:center; display:none;">
+  <div style="font-size:40px;">✅</div>
+  <h2 style="margin:8px 0 4px;">Your lounge pass is ready.</h2>
+  <p id="confirm-summary" style="color:var(--ink-soft); margin-bottom:16px;"></p>
+
+  <div style="display:flex; gap:8px; margin-bottom:16px;">
+    <input type="text" id="share-url-display" readonly style="flex:1;">
+    <button class="btn btn-primary" onclick="copyShareLink()">Copy</button>
+  </div>
+
+  <details style="text-align:left; margin-top:16px;">
+    <summary style="cursor:pointer; font-weight:700; color:var(--orange-deep);">📧 Email it instead</summary>
+    <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
+      <input type="email" id="email-recipient" placeholder="their@email.com">
+      <input type="text" id="email-display-name" placeholder="Your name (shown as sender)">
+      <button class="btn btn-primary" onclick="emailShare()">Send Email</button>
+      <p id="email-status" style="font-size:13px; margin:0;"></p>
+    </div>
+  </details>
+
+  <button class="btn" style="margin-top:20px;" onclick="location.reload()">Create Another Link</button>
+</div>
+
+<script>
+let selectedType = null;
+let selectedContent = null;  // {content_ref, title, subtitle}
+let selectedDuration = null;
+let currentShareUrl = null;
+let currentShareToken = null;
+
+function selectType(type, el) {
+  selectedType = type;
+  document.querySelectorAll('#flow-stages .card:nth-child(1) .chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  const input = document.getElementById('content-search');
+  input.disabled = false;
+  input.placeholder = `Search ${type}s…`;
+  input.value = '';
+  document.getElementById('content-results').innerHTML = '';
+  selectedContent = null;
+  updateCreateButton();
+}
+
+let searchTimer = null;
+function debouncedContentSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(runContentSearch, 350);
+}
+
+function runContentSearch() {
+  const q = document.getElementById('content-search').value.trim();
+  const el = document.getElementById('content-results');
+  if (!q || !selectedType) { el.innerHTML = ''; return; }
+  fetch(`/admin/share/api/search?type=${selectedType}&q=${encodeURIComponent(q)}`)
+    .then(r => r.json())
+    .then(items => {
+      if (items.error) {
+        el.innerHTML = `<p style="color:var(--ink-soft); font-size:13px;">Couldn't reach the library right now.</p>`;
+        return;
+      }
+      if (items.length === 0) {
+        el.innerHTML = `<p style="color:var(--ink-soft); font-size:13px;">No matches.</p>`;
+        return;
+      }
+      el.innerHTML = items.map(item => `
+        <div class="queue-item" style="cursor:pointer;" onclick='pickContent(${JSON.stringify(item)}, this)'>
+          <div style="flex:1;">${item.title} <span style="color:var(--ink-soft); font-size:13px;">— ${item.subtitle || ''}</span></div>
+        </div>`).join('');
+    })
+    .catch(console.error);
+}
+
+function pickContent(item, el) {
+  selectedContent = item;
+  document.querySelectorAll('#content-results .queue-item').forEach(q => q.style.background = '');
+  el.style.background = 'var(--gold)';
+  updateCreateButton();
+}
+
+function selectDuration(hrs, el) {
+  selectedDuration = hrs;
+  document.querySelectorAll('#flow-stages .card:nth-child(3) .chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  updateCreateButton();
+}
+
+function updateCreateButton() {
+  document.getElementById('create-link-btn').disabled = !(selectedType && selectedContent && selectedDuration);
+}
+
+function createLink() {
+  const errEl = document.getElementById('create-error');
+  errEl.style.display = 'none';
+  const btn = document.getElementById('create-link-btn');
+  btn.disabled = true;
+  btn.textContent = 'Creating…';
+
+  fetch('/admin/share/create', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      content_type: selectedType,
+      content_ref: selectedContent.content_ref,
+      content_title: selectedContent.title,
+      content_artist: selectedContent.subtitle,
+      duration_hours: selectedDuration,
+    }),
+  })
+    .then(async r => {
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Something went wrong.');
+      return data;
+    })
+    .then(data => {
+      currentShareUrl = data.share_url;
+      currentShareToken = data.token;
+      document.getElementById('flow-stages').style.display = 'none';
+      btn.style.display = 'none';
+      document.getElementById('confirm-summary').textContent =
+        `${selectedContent.title} — expires in ${selectedDuration} hours`;
+      document.getElementById('share-url-display').value = currentShareUrl;
+      document.getElementById('confirm-panel').style.display = 'block';
+    })
+    .catch(err => {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = '🔗 Create Link';
+    });
+}
+
+function copyShareLink() {
+  navigator.clipboard.writeText(currentShareUrl).then(() => alert('Link copied!'));
+}
+
+function emailShare() {
+  const email = document.getElementById('email-recipient').value.trim();
+  const displayName = document.getElementById('email-display-name').value.trim();
+  const statusEl = document.getElementById('email-status');
+  if (!email) { statusEl.textContent = 'Enter an email address.'; statusEl.style.color = 'var(--orange-deep)'; return; }
+
+  statusEl.textContent = 'Sending…';
+  statusEl.style.color = 'var(--ink-soft)';
+
+  fetch(`/admin/share/${currentShareToken}/email`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email: email, from_display_name: displayName}),
+  })
+    .then(async r => {
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Send failed.');
+      return data;
+    })
+    .then(() => {
+      statusEl.textContent = 'Sent!';
+      statusEl.style.color = 'var(--ink)';
+    })
+    .catch(err => {
+      statusEl.textContent = err.message;
+      statusEl.style.color = 'var(--orange-deep)';
+    });
+}
+</script>
+{% endblock %}

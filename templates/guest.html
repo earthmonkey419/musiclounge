@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}{{ room["room_name"] }} — MusicLounge{% endblock %}
+{% block content %}
+{% include "partials/_wordmark.html" %}
+<div style="text-align:center; margin:20px 0 24px;">
+  <h1 style="font-family:var(--font-display); font-size:40px; font-weight:700; margin:0;">{{ room["room_name"] }}</h1>
+  <p style="color:var(--ink-soft); margin-top:4px; font-size:14px;">You're in the room</p>
+</div>
+
+<div class="card surface-hi" style="margin-top:20px;">
+  <div style="display:flex; justify-content:space-between; align-items:baseline;">
+    <div style="font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--orange-deep);">NOW PLAYING</div>
+  </div>
+  <div id="now-playing-block" style="margin-top:8px;">
+    <p id="np-line" style="margin:0;">Nothing yet — search or pick a mood below to get started.</p>
+  </div>
+
+  <div style="font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--orange-deep); margin-top:20px;">UP NEXT</div>
+  <div id="queue-list" style="margin-top:8px;">
+    <p style="color:var(--ink-soft); font-size:14px;">Queue's empty.</p>
+  </div>
+</div>
+
+<div class="card surface-hi" style="margin-top:20px;">
+  <h2 style="margin-bottom:14px;">What should we play?</h2>
+  <input type="search" id="search-input" placeholder="Search songs, artists, albums…" oninput="debouncedSearch()">
+
+  <div style="font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--orange-deep); margin:20px 0 10px;">BROWSE BY MOOD</div>
+  <div class="chip-grid">
+    <div class="chip" onclick="loadMood('funk')">FUNK</div>
+    <div class="chip" onclick="loadMood('soul')">SOUL</div>
+    <div class="chip" onclick="loadMood('jazz')">JAZZ</div>
+    <div class="chip" onclick="loadMood('dance')">DANCE</div>
+    <div class="chip" onclick="loadMood('chill')">CHILL</div>
+    <div class="chip" onclick="loadMood('rock')">ROCK</div>
+  </div>
+
+  <div id="results" style="margin-top:20px;"></div>
+</div>
+
+<script>
+let searchTimer = null;
+function debouncedSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(runSearch, 350);
+}
+
+function runSearch() {
+  const q = document.getElementById("search-input").value.trim();
+  if (!q) { document.getElementById("results").innerHTML = ""; return; }
+  fetch("/api/search?q=" + encodeURIComponent(q))
+    .then(r => r.json())
+    .then(renderResults)
+    .catch(console.error);
+}
+
+function loadMood(mood) {
+  fetch("/api/mood/" + mood)
+    .then(r => r.json())
+    .then(renderResults)
+    .catch(console.error);
+}
+
+function renderResults(tracks) {
+  const el = document.getElementById("results");
+  if (tracks.error) {
+    el.innerHTML = `<p style="color:var(--ink-soft);">Couldn't reach the library right now — try again in a moment.</p>`;
+    return;
+  }
+  if (tracks.length === 0) {
+    el.innerHTML = `<p style="color:var(--ink-soft);">No matches. Try another search or mood.</p>`;
+    return;
+  }
+  el.innerHTML = tracks.map(t => `
+    <div class="queue-item">
+      <img class="art-sm" src="/art/${t.rating_key}" onerror="this.style.opacity=0">
+      <div style="flex:1;">${t.title} <span style="color:var(--ink-soft);">— ${t.artist}</span></div>
+      <button class="btn btn-primary" style="padding:8px 14px; font-size:13px;" onclick="addToQueue('${t.rating_key}', this)">+ ADD</button>
+    </div>`).join("");
+}
+
+function addToQueue(ratingKey, btn) {
+  btn.disabled = true;
+  btn.textContent = "…";
+  fetch("/api/queue/add", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({rating_key: ratingKey}),
+  })
+    .then(async r => {
+      let data;
+      try { data = await r.json(); }
+      catch (e) { throw new Error(`Server returned non-JSON (status ${r.status})`); }
+      if (data.room_ended) {
+        alert("This room has ended. You'll be sent back to join a new one.");
+        window.location.href = "/join";
+        return;
+      }
+      if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`);
+      return data;
+    })
+    .then(() => { btn.textContent = "Added"; refreshQueue(); })
+    .catch(err => {
+      console.error("Add to queue failed:", err);
+      btn.textContent = "Error";
+      btn.title = err.message;
+    });
+}
+
+function refreshQueue() {
+  fetch("/api/room-state")
+    .then(r => r.json())
+    .then(state => {
+      if (state.error) return;
+      const npLine = document.getElementById("np-line");
+      if (state.now_playing) {
+        npLine.innerHTML = `<strong>${state.now_playing.title}</strong> <span style="color:var(--ink-soft);">— ${state.now_playing.artist}</span>`;
+      } else {
+        npLine.textContent = "Nothing yet — search or pick a mood below to get started.";
+      }
+      const list = document.getElementById("queue-list");
+      if (state.queue.length === 0) {
+        list.innerHTML = `<p style="color:var(--ink-soft); font-size:14px;">Queue's empty.</p>`;
+      } else {
+        list.innerHTML = state.queue.map((item, i) => `
+          <div class="queue-item">
+            <span class="pos">${String(i+1).padStart(2,"0")}</span><img class="art-sm" src="/art/${item.track_ref}" onerror="this.style.opacity=0">
+            <div style="flex:1;">${item.title} <span style="color:var(--ink-soft);">— ${item.artist}</span></div>
+          </div>`).join("");
+      }
+    })
+    .catch(console.error);
+}
+
+refreshQueue();
+setInterval(refreshQueue, 4000);
+</script>
+{% endblock %}
