@@ -111,6 +111,28 @@ app to be served over HTTPS. `False` is for local development only.
 **Getting a real Plex token:** see
 [Plex's own guide](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
 
+### Using Portainer
+
+Portainer can manage the container, but creating config.py the first
+time still needs one-time access to the host filesystem (SSH or File
+Station) — Portainer has no built-in way to author a new file from
+scratch.
+
+1. One-time setup, outside Portainer: SSH in and run
+   cd /path/to/musiclounge
+   cp config.example.py config.py
+   Then edit config.py with your real PLEX_URL, PLEX_TOKEN, MUSIC_LIB,
+   ADMIN_PASSWORD, and SMTP_* values.
+2. In Portainer, go to Stacks then Add stack.
+   Repository method (recommended): paste
+   https://github.com/earthmonkey419/musiclounge.git as the
+   repository URL, leave the compose path as docker-compose.yml,
+   and deploy. Portainer builds the image automatically.
+   Web editor method: paste the contents of docker-compose.yml
+   directly instead, if you'd rather not have Portainer pull from
+   GitHub itself.
+3. Once deployed, the app is reachable at http://your-host:8679.
+
 ## Exposing it to the internet
 
 Both Room Mode guests and Share Mode recipients need to reach the app

@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  musiclounge:
+    build: .
+    container_name: musiclounge
+    restart: unless-stopped
+    ports:
+      - "8679:8679"
+    volumes:
+      - ./config.py:/app/config.py:ro
+      - musiclounge-data:/app/data
+
+volumes:
+  musiclounge-data:
