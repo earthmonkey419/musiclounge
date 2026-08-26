@@ -6,7 +6,10 @@ services:
     container_name: musiclounge
     restart: unless-stopped
     ports:
-      - "8679:8679"
+      # Override the host-side port with HOST_PORT if 8679 is already
+      # taken (e.g. running alongside another instance on the same
+      # box) — set HOST_PORT in the same environment variables list.
+      - "${HOST_PORT:-8679}:8679"
     environment:
       # Fill these in with real values — via Portainer's Environment
       # variables UI, or directly here. No file editing or SSH needed.
