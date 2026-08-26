@@ -136,10 +136,29 @@ through Portainer's own UI.
    directly instead, if you'd rather not have Portainer pull from
    GitHub itself.
 2. Before (or after) deploying, edit the stack's Environment
-   variables in Portainer's UI and fill in real values for
-   PLEX_TOKEN, ADMIN_PASSWORD, and the rest — docker-compose.yml
-   lists every variable with its default placeholder.
-3. Once deployed, the app is reachable at http://your-host:8679.
+   variables in Portainer's UI and paste something like this
+   (adjust for your setup):
+
+       HOST_PORT=8679
+       PLEX_URL=http://10.0.0.251:32400
+       PLEX_TOKEN=your-real-token
+       MUSIC_LIB=Music
+       ADMIN_PASSWORD=your-real-password
+       SECRET_KEY=your-random-secret
+       COOKIE_SECURE=false
+       DB_PATH=/app/data/musiclounge.db
+       SMTP_HOST=REPLACE_ME
+       SMTP_PORT=587
+       SMTP_USERNAME=REPLACE_ME
+       SMTP_PASSWORD=REPLACE_ME
+       SMTP_FROM_ADDRESS=REPLACE_ME
+       SMTP_FROM_DISPLAY_NAME=MusicLounge
+
+   Set HOST_PORT to something other than 8679 if that port is
+   already taken on your box. Leave COOKIE_SECURE=false until this
+   is genuinely behind HTTPS -- see the note above.
+3. Once deployed, the app is reachable at http://your-host:HOST_PORT
+   (8679 unless you changed it).
 
 Prefer a file over environment variables? Uncomment the config.py
 bind mount in docker-compose.yml instead — that still works exactly
