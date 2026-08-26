@@ -18,6 +18,9 @@ HOST = "0.0.0.0"
 PORT = 8679
 
 # --- Database ---
+# Docker users: set this to "/app/data/musiclounge.db" to match the
+# musiclounge-data volume mount in the README — otherwise the DB lives
+# in the container's root filesystem and gets wiped on every recreate.
 DB_PATH = "musiclounge.db"
 
 # --- Mode A: Room ---

@@ -1,0 +1,11 @@
+config.py
+*.db
+*.log
+.venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+.DS_Store
+static/img/*preview*.png
+static/img/*preview*.jpg
