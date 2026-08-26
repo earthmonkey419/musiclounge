@@ -9,28 +9,46 @@ from auth import guest_required
 bp = Blueprint("room", __name__)
 
 
-def _require_live_room():
-    """Call at the top of every guest action endpoint. Returns None if
-    the guest's session room is still genuinely active; otherwise
-    clears the stale session and returns a (response, status) tuple
-    the caller should return immediately.
+def _resolve_action_room():
+    """Resolves which room an action (search/queue-add/skip/playpause/
+    volume) should apply to. Works for EITHER a guest (room_id in
+    session, room still live) OR an admin.
 
-    This closes a real gap: guest_required only checks that a room_id
-    is *present* in the session, not that it's still the currently
-    active room. Without this, a guest whose tab stayed open across a
-    room restart/end could keep POSTing successfully into a dead room
-    — writes that silently never show up on the (correctly different)
-    live dashboard."""
+    This matters because the admin dashboard IS the host device -- it's
+    the one with the actual <audio> element and transport controls --
+    but the admin never goes through /join, so it never has a guest
+    room_id session. Every one of these endpoints used to require
+    @guest_required alone, which silently 302-redirected every call
+    the dashboard ever made (skip, play/pause, the auto-advance-on-
+    track-end handler) to /join. fetch() follows redirects and the
+    resulting JSON-parse failure was swallowed by a bare .catch(), so
+    it failed completely invisibly: is_playing never cleared, so the
+    next 4s poll saw "should be playing" + "audio actually paused"
+    and replayed the same finished track forever -- the reported
+    "stuck on one track, playing over and over" bug.
+
+    Returns (room_id, None) on success, or (None, (response, status))
+    for the caller to return immediately."""
     room_id = session.get("room_id")
-    if not db.is_room_live(room_id):
+    if room_id and db.is_room_live(room_id):
+        return room_id, None
+
+    if session.get("is_admin"):
+        room = db.get_active_room()
+        if room:
+            return room["session_id"], None
+        return None, (jsonify({"error": "No active room."}), 404)
+
+    if room_id:
         session.pop("room_id", None)
-        return jsonify({"error": "This room has ended. Please rejoin.", "room_ended": True}), 410
-    return None
+        return None, (jsonify({"error": "This room has ended. Please rejoin.", "room_ended": True}), 410)
+
+    return None, (jsonify({"error": "Not authorized."}), 401)
 
 
 @bp.route("/join/<code>")
 def join_by_code(code):
-    """Instant join via QR scan — skips the manual code-entry form.
+    """Instant join via QR scan -- skips the manual code-entry form.
     Same join logic as the POST /join path, just triggered by a GET
     so a scanned QR link does the whole thing in one step."""
     room = db.get_room_by_code(code)
@@ -67,13 +85,14 @@ def guest():
 
 
 # --- JSON API, used by guest.html + admin_dashboard.html's JS ---
+# Every action endpoint below accepts either a guest or an admin
+# session -- see _resolve_action_room() above for why that matters.
 
 @bp.route("/api/search")
-@guest_required
 def api_search():
-    guard = _require_live_room()
-    if guard:
-        return guard
+    room_id, err = _resolve_action_room()
+    if err:
+        return err
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify([])
@@ -85,11 +104,10 @@ def api_search():
 
 
 @bp.route("/api/mood/<mood_key>")
-@guest_required
 def api_mood(mood_key):
-    guard = _require_live_room()
-    if guard:
-        return guard
+    room_id, err = _resolve_action_room()
+    if err:
+        return err
     try:
         return jsonify(plex_client.tracks_by_mood(mood_key))
     except Exception:
@@ -119,9 +137,6 @@ def _room_state(room_id):
 
 @bp.route("/api/room-state")
 def api_room_state():
-    # Used by both the guest portal (session-scoped) and the admin
-    # dashboard (looks up the one active room directly, no guest
-    # session cookie involved).
     room_id = session.get("room_id")
     if not room_id:
         room = db.get_active_room()
@@ -133,13 +148,11 @@ def api_room_state():
 
 
 @bp.route("/api/queue/add", methods=["POST"])
-@guest_required
 def api_queue_add():
-    guard = _require_live_room()
-    if guard:
-        return guard
+    room_id, err = _resolve_action_room()
+    if err:
+        return err
 
-    room_id = session["room_id"]
     body = request.get_json(silent=True) or {}
     rating_key = body.get("rating_key")
 
@@ -171,29 +184,27 @@ def api_queue_add():
 
 
 @bp.route("/api/skip", methods=["POST"])
-@guest_required
 def api_skip():
-    guard = _require_live_room()
-    if guard:
-        return guard
-    room_id = session["room_id"]
+    room_id, err = _resolve_action_room()
+    if err:
+        return err
     if not db.can_skip(room_id):
-        return jsonify({"error": "Skipping too fast — try again in a moment."}), 429
+        return jsonify({"error": "Skipping too fast -- try again in a moment."}), 429
     db.record_skip(room_id)
     nxt = db.pop_next(room_id)
     if nxt:
         db.set_now_playing(room_id, db.queue_row_to_track(nxt))
+    else:
+        db.set_play_state(room_id, False)
     db.log_action(room_id, "skip")
     return jsonify({"ok": True})
 
 
 @bp.route("/api/playpause", methods=["POST"])
-@guest_required
 def api_playpause():
-    guard = _require_live_room()
-    if guard:
-        return guard
-    room_id = session["room_id"]
+    room_id, err = _resolve_action_room()
+    if err:
+        return err
     room = db.get_room(room_id)
     db.set_play_state(room_id, not room["is_playing"])
     db.log_action(room_id, "play_pause")
@@ -201,12 +212,10 @@ def api_playpause():
 
 
 @bp.route("/api/volume", methods=["POST"])
-@guest_required
 def api_volume():
-    guard = _require_live_room()
-    if guard:
-        return guard
-    room_id = session["room_id"]
+    room_id, err = _resolve_action_room()
+    if err:
+        return err
     body = request.get_json(silent=True) or {}
     try:
         vol = int(body.get("volume", 0))
@@ -219,10 +228,6 @@ def api_volume():
 
 @bp.route("/art/<rating_key>")
 def art(rating_key):
-    """Proxies album art from Plex, same token-hiding pattern as /stream.
-    Cached client-side hard, since a given rating_key's art never
-    changes — cuts down repeat requests for the same album across a
-    session's search results and queue."""
     try:
         thumb_path = plex_client.track_art_path(rating_key)
         if not thumb_path:
@@ -245,9 +250,6 @@ def art(rating_key):
 
 @bp.route("/stream/<rating_key>")
 def stream(rating_key):
-    """Proxies audio from Plex. The real Plex token never reaches any
-    client — it's attached here, server-side, on the upstream request
-    only. Range-request passthrough for seeking."""
     try:
         part_path = plex_client.track_stream_part(rating_key)
     except Exception:
