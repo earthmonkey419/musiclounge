@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://musiclounge.vp-fun.com/static/hero-logo.jpg" alt="MusicLounge Jukebox for Plex" width="100%">
+  <img src="https://musiclounge.vp-fun.com/assets/img/og-image.jpg" alt="MusicLounge Jukebox for Plex" width="100%">
 </p>
 
 # MusicLounge Jukebox for Plex
