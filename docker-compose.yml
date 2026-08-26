@@ -7,9 +7,28 @@ services:
     restart: unless-stopped
     ports:
       - "8679:8679"
+    environment:
+      # Fill these in with real values — via Portainer's Environment
+      # variables UI, or directly here. No file editing or SSH needed.
+      - PLEX_URL=http://10.0.0.251:32400
+      - PLEX_TOKEN=REPLACE_ME
+      - MUSIC_LIB=Music
+      - ADMIN_PASSWORD=REPLACE_ME
+      - SECRET_KEY=REPLACE_ME_RANDOM
+      - COOKIE_SECURE=true
+      - DB_PATH=/app/data/musiclounge.db
+      - SMTP_HOST=REPLACE_ME
+      - SMTP_PORT=587
+      - SMTP_USERNAME=REPLACE_ME
+      - SMTP_PASSWORD=REPLACE_ME
+      - SMTP_FROM_ADDRESS=REPLACE_ME
+      - SMTP_FROM_DISPLAY_NAME=MusicLounge
     volumes:
-      - ./config.py:/app/config.py:ro
       - musiclounge-data:/app/data
+      # Optional: uncomment to use a file instead of/alongside the
+      # environment variables above. A bind-mounted config.py always
+      # wins over env vars for any value it sets.
+      # - ./config.py:/app/config.py:ro
 
 volumes:
   musiclounge-data:

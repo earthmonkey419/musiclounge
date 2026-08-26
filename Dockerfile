@@ -27,17 +27,27 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# config.py (Plex token, admin password, SMTP credentials) is never
-# baked into the image — bind-mount it at runtime. See README.md.
-# .dockerignore keeps it, the sqlite db, and dev files out of the
-# build context as a second layer of protection.
+RUN chmod +x docker-entrypoint.sh
+
+# Bake config.example.py in as the default config.py. This is safe:
+# .dockerignore already excludes any real local config.py from ever
+# entering the build context (even if you're building from a directory
+# that has a real one sitting right next to the Dockerfile), so this
+# only ever copies the placeholder-default template — never real
+# secrets. Real values are supplied via environment variables at
+# runtime (see docker-compose.yml and README.md), which Docker never
+# writes into any image layer. A bind-mounted config.py, if you
+# provide one, simply overwrites this at container start.
+RUN cp config.example.py config.py
 
 RUN mkdir -p /app/data
 
 EXPOSE 8679
 
+# docker-entrypoint.sh initializes the DB schema (idempotent — safe
+# on every start, not just the first) before handing off to gunicorn.
 # gthread, not plain sync workers: a sync worker blocks for the entire
 # duration of a request, which for /stream and /art means a single slow
 # listener holds a worker hostage for minutes. 2 processes x 4 threads
 # = 8 concurrent request slots instead of just 2. See MUSICLOUNGE-SCOPE.md.
-CMD ["gunicorn", "--bind", "0.0.0.0:8679", "--workers", "2", "--threads", "4", "--worker-class", "gthread", "app:app"]
+ENTRYPOINT ["./docker-entrypoint.sh"]

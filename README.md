@@ -53,34 +53,44 @@ Share Mode:  Recipient -> /linked/<token> -> their own <audio> element, independ
 git clone https://github.com/earthmonkey419/musiclounge.git
 cd musiclounge
 
-cp config.example.py config.py
-# edit config.py: PLEX_URL, PLEX_TOKEN, MUSIC_LIB, ADMIN_PASSWORD, SMTP_*
-# set COOKIE_SECURE = True (requires HTTPS — see below)
-# for Docker specifically, also set DB_PATH = "/app/data/musiclounge.db"
-# — the volume below only persists /app/data, and DB_PATH defaults to a
-# bare filename in the app root, which the container recreates fresh
-# every time unless you point it at the mounted directory
-
 docker build -t musiclounge .
 docker run -d --name musiclounge \
   -p 8679:8679 \
-  -v $(pwd)/config.py:/app/config.py:ro \
+  -e PLEX_URL="http://10.0.0.251:32400" \
+  -e PLEX_TOKEN="your-real-token" \
+  -e MUSIC_LIB="Music" \
+  -e ADMIN_PASSWORD="your-real-password" \
+  -e COOKIE_SECURE="true" \
+  -e DB_PATH="/app/data/musiclounge.db" \
   -v musiclounge-data:/app/data \
   musiclounge
+
+# No config.py file needed — every setting reads from an environment
+# variable first, falling back to a safe placeholder default if unset.
+# The image already has a working config.py baked in (placeholders
+# only, no real secrets), so the container boots even with zero -e
+# flags; just be sure to actually set the real ones above before
+# relying on it. Still want a file instead? Bind-mount one the old
+# way (-v $(pwd)/config.py:/app/config.py:ro) and it'll win over any
+# env vars you also set.
 ```
 
-`config.py` holds your Plex token, admin password, and SMTP credentials —
-it's bind-mounted at container start, never baked into the image
-(`.dockerignore` excludes it from the build context too, as a second
-layer of protection), so it never ends up in a Docker layer or gets
-pushed anywhere by accident.
+Your real Plex token, admin password, and SMTP credentials only ever
+exist as environment variables you set at `docker run` (or in
+Portainer's UI) — Docker never writes an environment variable into
+any image layer. The image does contain a `config.py`, but it's built
+from `config.example.py`, which only has safe placeholder values
+(`REPLACE_ME` etc.) — `.dockerignore` makes sure your *real* local
+`config.py`, if you have one sitting in the build directory, never
+enters the build context in the first place.
 
 `musiclounge-data` is a named volume for the SQLite database (room
 sessions, queue, and share links) so it survives container recreation —
-**only works if `DB_PATH` in your `config.py` actually points inside
-that mounted directory** (`/app/data/musiclounge.db`), per the note
-above. Worth knowing this if you're comparing against RiderMusic's
-docker run command, which doesn't persist a data volume the same way.
+**only works if `DB_PATH` actually points inside that mounted
+directory** (`/app/data/musiclounge.db`, set via the `-e DB_PATH=...`
+flag above). Worth knowing this if you're comparing against
+RiderMusic's docker run command, which doesn't persist a data volume
+the same way.
 
 ### Manual (Python)
 
@@ -113,17 +123,11 @@ app to be served over HTTPS. `False` is for local development only.
 
 ### Using Portainer
 
-Portainer can manage the container, but creating config.py the first
-time still needs one-time access to the host filesystem (SSH or File
-Station) — Portainer has no built-in way to author a new file from
-scratch.
+No SSH or File Station access needed — every real setting (Plex
+token, admin password, SMTP credentials) can be filled in entirely
+through Portainer's own UI.
 
-1. One-time setup, outside Portainer: SSH in and run
-   cd /path/to/musiclounge
-   cp config.example.py config.py
-   Then edit config.py with your real PLEX_URL, PLEX_TOKEN, MUSIC_LIB,
-   ADMIN_PASSWORD, and SMTP_* values.
-2. In Portainer, go to Stacks then Add stack.
+1. In Portainer, go to Stacks then Add stack.
    Repository method (recommended): paste
    https://github.com/earthmonkey419/musiclounge.git as the
    repository URL, leave the compose path as docker-compose.yml,
@@ -131,7 +135,16 @@ scratch.
    Web editor method: paste the contents of docker-compose.yml
    directly instead, if you'd rather not have Portainer pull from
    GitHub itself.
+2. Before (or after) deploying, edit the stack's Environment
+   variables in Portainer's UI and fill in real values for
+   PLEX_TOKEN, ADMIN_PASSWORD, and the rest — docker-compose.yml
+   lists every variable with its default placeholder.
 3. Once deployed, the app is reachable at http://your-host:8679.
+
+Prefer a file over environment variables? Uncomment the config.py
+bind mount in docker-compose.yml instead — that still works exactly
+like the file-based setup above, and takes priority over any
+environment variables you also set.
 
 ## Exposing it to the internet
 
