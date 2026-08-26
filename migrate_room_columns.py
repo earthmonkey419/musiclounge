@@ -1,3 +1,11 @@
+"""
+Adds any room_sessions columns that might be missing from an existing
+database — safe to run every time (checks first, only adds what's
+actually absent). Needed because CREATE TABLE IF NOT EXISTS in
+init_db.py is a no-op on a table that already exists with an older
+schema, which is exactly what happens to a persisted Docker volume
+across image rebuilds during development.
+"""
 import sqlite3
 import config
 
@@ -24,4 +32,4 @@ for col, coltype in new_columns.items():
 
 conn.commit()
 conn.close()
-print(f"Added columns: {added}" if added else "Schema already up to date.")
+print(f"Added columns: {added}" if added else "room_sessions schema already up to date.")

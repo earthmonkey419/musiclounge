@@ -16,7 +16,16 @@ import config
 
 
 def get_db():
-    conn = sqlite3.connect(config.DB_PATH)
+    # WAL mode + busy_timeout: standard fix for "database is locked"
+    # under concurrent writers. Our gunicorn setup runs 2 worker
+    # PROCESSES (not just threads) x 4 threads each, all potentially
+    # opening their own connection — SQLite's default rollback-journal
+    # locking mode can throw immediately on write contention. WAL lets
+    # readers and a writer coexist without blocking each other, and
+    # busy_timeout makes any remaining contention retry for up to 10s
+    # instead of failing instantly.
+    conn = sqlite3.connect(config.DB_PATH, timeout=10)
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.row_factory = sqlite3.Row
     return conn
 
