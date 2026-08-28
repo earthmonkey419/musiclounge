@@ -20,6 +20,12 @@
   <h2 style="font-size:24px;">{{ content_title }}</h2>
   {% if content_artist %}<p style="color:var(--ink-soft); margin:4px 0 20px;">{{ content_artist }}</p>{% endif %}
 
+  <div class="card surface-hi" style="text-align:left; margin-bottom:20px;">
+    <div style="font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--orange-deep); margin-bottom:6px;">NOW PLAYING</div>
+    <div id="now-playing-title" style="font-weight:700;">Nothing playing yet</div>
+    <div id="now-playing-artist" style="color:var(--ink-soft); font-size:14px;"></div>
+  </div>
+
   <div class="track-list">
     {% for t in tracks %}
     <div class="track-row" style="cursor:pointer;" onclick="playTrack({{ loop.index0 }})" id="track-row-{{ loop.index0 }}">
@@ -38,6 +44,8 @@
     <button class="btn btn-round" onclick="nextTrack()">⏭</button>
   </div>
 </div>
+
+<button id="back-to-top" class="btn btn-round btn-primary" onclick="window.scrollTo({top:0, behavior:'smooth'})" title="Back to top" style="position:fixed; bottom:24px; right:24px; z-index:10; display:none;">⬆</button>
 
 <script>
 const TRACKS = {{ tracks|tojson }};
@@ -86,6 +94,8 @@ function playTrack(i, fromShuffleAdvance) {
   audioEl.load();
   audioEl.play().catch(() => {});
   document.getElementById("hero-art").src = "/art/" + TRACKS[i].rating_key;
+  document.getElementById("now-playing-title").textContent = TRACKS[i].title;
+  document.getElementById("now-playing-artist").textContent = TRACKS[i].artist || "";
   highlightRow(i);
   document.getElementById("playpause-btn").textContent = "⏸";
 }
@@ -144,5 +154,9 @@ function updateCountdown() {
 }
 updateCountdown();
 setInterval(updateCountdown, 1000);
+
+window.addEventListener("scroll", () => {
+  document.getElementById("back-to-top").style.display = window.scrollY > 300 ? "flex" : "none";
+});
 </script>
 {% endblock %}
