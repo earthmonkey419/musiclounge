@@ -2,6 +2,9 @@
 {% block title %}Share Some Music — MusicLounge{% endblock %}
 {% block content %}
 {% include "partials/_wordmark.html" %}
+<div style="text-align:right; margin-top:-40px;">
+  <a href="{{ url_for('admin.stats') }}" class="btn" style="padding:8px 14px; font-size:13px;">📊 Stats</a>
+</div>
 <div style="text-align:center; margin:20px 0 24px;">
   <h1 style="font-family:var(--font-display); font-size:36px; font-weight:700; margin:0;">🎁 Share Some Music</h1>
   <p style="color:var(--ink-soft); margin-top:4px;">Send an album, artist, or playlist — theirs for a little while.</p>

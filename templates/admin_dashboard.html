@@ -3,14 +3,17 @@
 {% block content %}
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
   {% include "partials/_wordmark.html" %}
-  {% if room %}
-  <form method="post" onsubmit="return confirm('End this room for everyone?');">
-    <input type="hidden" name="action" value="end">
-    <button type="submit" class="btn" style="padding:8px 14px; font-size:13px;">End Room</button>
-  </form>
-  {% else %}
-  <a href="{{ url_for('admin.logout') }}" class="btn">Log out</a>
-  {% endif %}
+  <div style="display:flex; gap:8px; align-items:center;">
+    <a href="{{ url_for('admin.stats') }}" class="btn" style="padding:8px 14px; font-size:13px;">📊 Stats</a>
+    {% if room %}
+    <form method="post" onsubmit="return confirm('End this room for everyone?');">
+      <input type="hidden" name="action" value="end">
+      <button type="submit" class="btn" style="padding:8px 14px; font-size:13px;">End Room</button>
+    </form>
+    {% else %}
+    <a href="{{ url_for('admin.logout') }}" class="btn">Log out</a>
+    {% endif %}
+  </div>
 </div>
 
 {% if room %}

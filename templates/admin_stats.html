@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Stats -- MusicLounge{% endblock %}
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+  {% include "partials/_wordmark.html" %}
+  <a href="{{ url_for('admin.dashboard') }}" class="btn" style="padding:8px 14px; font-size:13px;">← Dashboard</a>
+</div>
+
+<h1 style="font-family:var(--font-display); font-size:32px; margin-bottom:20px;">📊 Stats</h1>
+
+<div class="card" style="margin-bottom:24px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+    <div style="font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--orange-deep);">SHARE LINKS ({{ shares|length }})</div>
+    <div style="display:flex; gap:8px;">
+      <a href="{{ url_for('admin.stats_download', kind='shares') }}" class="btn" style="padding:6px 12px; font-size:12px;">⬇ Download CSV</a>
+      <form method="post" action="{{ url_for('admin.stats_clear') }}" onsubmit="return confirm('Clear expired and revoked share links? Live links are never affected.');" style="display:inline;">
+        <input type="hidden" name="kind" value="shares">
+        <button type="submit" class="btn" style="padding:6px 12px; font-size:12px;">🗑 Clear expired/revoked</button>
+      </form>
+    </div>
+  </div>
+  {% if shares %}
+  <div style="max-height:480px; overflow-y:auto; overflow-x:auto;">
+    <table style="width:100%; border-collapse:collapse; font-size:14px;">
+      <thead>
+        <tr style="text-align:left;">
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Content</th>
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Type</th>
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Status</th>
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Plays</th>
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Created</th>
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Expires</th>
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Last Played</th>
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Sent To</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in shares %}
+        <tr style="border-bottom:1px solid var(--cream-deep);">
+          <td style="padding:8px 6px;">{{ s.content_title or "--" }}{% if s.content_artist %}<br><span style="color:var(--ink-soft); font-size:12px;">{{ s.content_artist }}</span>{% endif %}</td>
+          <td style="padding:8px 6px;">{{ s.content_type }}</td>
+          <td style="padding:8px 6px;">
+            {% if s.status == "live" %}<span class="code-chip" style="font-size:11px; padding:4px 8px; background:var(--mint);">LIVE</span>
+            {% elif s.status == "expired" %}<span class="code-chip" style="font-size:11px; padding:4px 8px;">EXPIRED</span>
+            {% else %}<span class="code-chip" style="font-size:11px; padding:4px 8px; background:var(--orange);">REVOKED</span>{% endif %}
+          </td>
+          <td style="padding:8px 6px; font-weight:700;">{{ s.access_count }}</td>
+          <td style="padding:8px 6px; color:var(--ink-soft); font-size:12px;">{{ s.created_at[:16] if s.created_at else "--" }}</td>
+          <td style="padding:8px 6px; color:var(--ink-soft); font-size:12px;">{{ s.expires_at[:16] if s.expires_at else "--" }}</td>
+          <td style="padding:8px 6px; color:var(--ink-soft); font-size:12px;">{{ s.last_accessed_at[:16] if s.last_accessed_at else "never" }}</td>
+          <td style="padding:8px 6px; color:var(--ink-soft); font-size:12px;">{{ s.recipient_email or (s.delivery_method or "not sent yet") }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="color:var(--ink-soft);">No share links created yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+    <div style="font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--orange-deep);">ROOM SESSIONS ({{ rooms|length }})</div>
+    <div style="display:flex; gap:8px;">
+      <a href="{{ url_for('admin.stats_download', kind='rooms') }}" class="btn" style="padding:6px 12px; font-size:12px;">⬇ Download CSV</a>
+      <form method="post" action="{{ url_for('admin.stats_clear') }}" onsubmit="return confirm('Clear ended room sessions? The current active room, if any, is never affected.');" style="display:inline;">
+        <input type="hidden" name="kind" value="rooms">
+        <button type="submit" class="btn" style="padding:6px 12px; font-size:12px;">🗑 Clear ended</button>
+      </form>
+    </div>
+  </div>
+  {% if rooms %}
+  <div style="max-height:480px; overflow-y:auto; overflow-x:auto;">
+    <table style="width:100%; border-collapse:collapse; font-size:14px;">
+      <thead>
+        <tr style="text-align:left;">
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Room Name</th>
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Started</th>
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Devices Joined</th>
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rooms %}
+        <tr style="border-bottom:1px solid var(--cream-deep);">
+          <td style="padding:8px 6px;">{{ r.room_name }}</td>
+          <td style="padding:8px 6px; color:var(--ink-soft); font-size:12px;">{{ r.started_at[:16] if r.started_at else "--" }}</td>
+          <td style="padding:8px 6px; font-weight:700;">{{ r.device_count }}</td>
+          <td style="padding:8px 6px;">
+            {% if r.ended_by_admin %}<span class="code-chip" style="font-size:11px; padding:4px 8px;">ENDED</span>
+            {% else %}<span class="code-chip" style="font-size:11px; padding:4px 8px; background:var(--mint);">ACTIVE</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="color:var(--ink-soft);">No rooms started yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
