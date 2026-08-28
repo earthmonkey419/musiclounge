@@ -13,7 +13,7 @@ with a code and DJ together in real time, and **Share Mode**, a private
 link to a single album, playlist, or artist that one person streams on
 their own schedule. No login, no app install, either way.
 
-**Status: scoped, in active development.** See
+**Status: v1 feature-locked -- bug fixes only.** See
 [`MUSICLOUNGE-SCOPE.md`](./MUSICLOUNGE-SCOPE.md) for the full design.
 
 ## How it works
