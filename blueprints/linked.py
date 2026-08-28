@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, abort, current_app
+from flask import Blueprint, render_template, current_app
 
 import db
 import plex_client
@@ -8,10 +8,11 @@ bp = Blueprint("linked", __name__)
 
 @bp.route("/<share_token>")
 def view_share(share_token):
-    # 404 whether the token is expired, revoked, or never existed —
-    # never distinguish, per the scope doc's security reasoning.
+    # Still a 404 whether the token is expired, revoked, or never
+    # existed — never distinguish, per the scope doc's security
+    # reasoning. Just a nicer page than Flask's bare default.
     if not db.is_share_live(share_token):
-        abort(404)
+        return render_template("link_expired.html"), 404
 
     share = db.get_share(share_token)
 

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Link expired -- MusicLounge{% endblock %}
+{% block content %}
+<div class="home-hero">
+  <img src="{{ url_for('static', filename='hero-logo.jpg') }}" alt="MusicLounge -- Jukebox for Plex" class="hero-logo">
+</div>
+
+<div class="card surface-hi" style="max-width:480px; margin:24px auto; text-align:center;">
+  <div style="font-size:40px;">🎟️</div>
+  <h2 style="margin:8px 0 4px;">This link has expired.</h2>
+  <p style="color:var(--ink-soft); margin-bottom:0;">
+    Share links are only good for a little while. Ask whoever sent
+    this one for a fresh link.
+  </p>
+</div>
+{% endblock %}
