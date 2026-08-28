@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}{{ content_title }} — MusicLounge{% endblock %}
+{% block title %}{{ content_title }} -- MusicLounge{% endblock %}
 {% block og_tags %}
-<meta property="og:title" content="{{ content_title }}{% if content_artist %} — {{ content_artist }}{% endif %}">
-<meta property="og:description" content="Someone shared this with you on MusicLounge. Tap to listen — no account needed.">
+<meta property="og:title" content="{{ content_title }}{% if content_artist %} -- {{ content_artist }}{% endif %}">
+<meta property="og:description" content="Someone shared this with you on MusicLounge. Tap to listen -- no account needed.">
 <meta property="og:image" content="{{ url_for('room.art', rating_key=share['content_ref'], _external=True) }}">
 <meta property="og:type" content="music.song">
 <meta name="twitter:card" content="summary_large_image">
@@ -27,11 +27,12 @@
       <span>{{ "%d:%02d"|format(t["duration_sec"] // 60, t["duration_sec"] % 60) }}</span>
     </div>
     {% else %}
-    <p style="color:var(--ink-soft);">Nothing to play — this content may no longer be available.</p>
+    <p style="color:var(--ink-soft);">Nothing to play -- this content may no longer be available.</p>
     {% endfor %}
   </div>
 
   <div class="transport" style="justify-content:center; margin-top:20px;">
+    <button id="shuffle-btn" class="btn btn-round" onclick="toggleShuffle()" title="Shuffle">🔀</button>
     <button class="btn btn-round" onclick="prevTrack()">⏮</button>
     <button id="playpause-btn" class="btn btn-round btn-primary" onclick="togglePlayPause()">▶</button>
     <button class="btn btn-round" onclick="nextTrack()">⏭</button>
@@ -44,21 +45,46 @@ const EXPIRES_AT = {{ share["expires_at"]|tojson }};
 const audioEl = document.getElementById("player");
 let currentIndex = -1;
 
+let shuffleOn = false;
+let shuffleQueue = [];
+let playHistory = [];
+
 function highlightRow(i) {
   document.querySelectorAll(".track-row").forEach(el => el.style.fontWeight = "normal");
   const row = document.getElementById("track-row-" + i);
   if (row) row.style.fontWeight = "700";
 }
 
-function playTrack(i) {
+function rebuildShuffleQueue() {
+  shuffleQueue = TRACKS.map((_, i) => i).filter(i => i !== currentIndex);
+  for (let i = shuffleQueue.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffleQueue[i], shuffleQueue[j]] = [shuffleQueue[j], shuffleQueue[i]];
+  }
+}
+
+function toggleShuffle() {
+  shuffleOn = !shuffleOn;
+  document.getElementById("shuffle-btn").classList.toggle("btn-primary", shuffleOn);
+  if (shuffleOn) {
+    playHistory = [];
+    rebuildShuffleQueue();
+  }
+}
+
+function playTrack(i, fromShuffleAdvance) {
   if (i < 0 || i >= TRACKS.length) return;
+
+  if (shuffleOn && !fromShuffleAdvance) {
+    if (currentIndex !== -1) playHistory.push(currentIndex);
+    const idx = shuffleQueue.indexOf(i);
+    if (idx !== -1) shuffleQueue.splice(idx, 1);
+  }
+
   currentIndex = i;
   audioEl.src = "/stream/" + TRACKS[i].rating_key;
   audioEl.load();
-  audioEl.play().catch(() => {
-    // Autoplay may be blocked until a user gesture — but this function
-    // is only ever called from a click, so this path is rare here.
-  });
+  audioEl.play().catch(() => {});
   document.getElementById("hero-art").src = "/art/" + TRACKS[i].rating_key;
   highlightRow(i);
   document.getElementById("playpause-btn").textContent = "⏸";
@@ -76,18 +102,34 @@ function togglePlayPause() {
 }
 
 function nextTrack() {
-  if (currentIndex + 1 < TRACKS.length) playTrack(currentIndex + 1);
+  if (shuffleOn) {
+    if (currentIndex !== -1) playHistory.push(currentIndex);
+    if (shuffleQueue.length === 0) {
+      rebuildShuffleQueue();
+      if (shuffleQueue.length === 0) return;
+    }
+    const next = shuffleQueue.shift();
+    playTrack(next, true);
+  } else {
+    if (currentIndex + 1 < TRACKS.length) playTrack(currentIndex + 1);
+  }
 }
 
 function prevTrack() {
-  if (currentIndex > 0) playTrack(currentIndex - 1);
+  if (shuffleOn) {
+    if (playHistory.length > 0) {
+      const prev = playHistory.pop();
+      playTrack(prev, true);
+    }
+  } else {
+    if (currentIndex > 0) playTrack(currentIndex - 1);
+  }
 }
 
 audioEl.addEventListener("ended", nextTrack);
 
-// Expiry countdown
 function updateCountdown() {
-  const expires = new Date(EXPIRES_AT + "Z").getTime();  // treat as UTC
+  const expires = new Date(EXPIRES_AT + "Z").getTime();
   const now = Date.now();
   const diff = expires - now;
   const el = document.getElementById("countdown");
