@@ -18,7 +18,7 @@ def new_share():
 def api_share_search():
     content_type = request.args.get("type", "").strip().lower()
     q = request.args.get("q", "").strip()
-    if not q or content_type not in ("album", "artist", "playlist"):
+    if not q or content_type not in ("album", "artist", "playlist", "track"):
         return jsonify([])
     try:
         return jsonify(plex_client.search_content(content_type, q))
@@ -36,7 +36,7 @@ def create_share():
     content_artist = body.get("content_artist", "")
     duration = body.get("duration_hours")
 
-    if content_type not in ("album", "artist", "playlist"):
+    if content_type not in ("album", "artist", "playlist", "track"):
         return jsonify({"error": "Pick what you're sharing first."}), 400
     if duration not in config.SHARE_LINK_DURATIONS_HOURS:
         return jsonify({"error": "Pick a valid duration (24/48/72 hours)."}), 400
