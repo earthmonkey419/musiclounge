@@ -32,6 +32,7 @@
           <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Expires</th>
           <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Last Played</th>
           <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Sent To</th>
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -49,6 +50,14 @@
           <td style="padding:8px 6px; color:var(--ink-soft); font-size:12px;">{{ s.expires_at[:16] if s.expires_at else "--" }}</td>
           <td style="padding:8px 6px; color:var(--ink-soft); font-size:12px;">{{ s.last_accessed_at[:16] if s.last_accessed_at else "never" }}</td>
           <td style="padding:8px 6px; color:var(--ink-soft); font-size:12px;">{{ s.recipient_email or (s.delivery_method or "not sent yet") }}</td>
+          <td style="padding:8px 6px;">
+            {% if s.status == "live" %}
+            <form method="post" action="{{ url_for('admin.stats_revoke_share') }}" onsubmit="return confirm('End this link? It will stop working immediately.');" style="display:inline;">
+              <input type="hidden" name="token" value="{{ s.share_token }}">
+              <button type="submit" class="btn" style="padding:5px 10px; font-size:11px;">End Link</button>
+            </form>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -79,6 +88,7 @@
           <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Started</th>
           <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Devices Joined</th>
           <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Status</th>
+          <th style="padding:8px 6px; position:sticky; top:0; background:var(--cream); border-bottom:2px solid var(--ink);">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -90,6 +100,14 @@
           <td style="padding:8px 6px;">
             {% if r.ended_by_admin %}<span class="code-chip" style="font-size:11px; padding:4px 8px;">ENDED</span>
             {% else %}<span class="code-chip" style="font-size:11px; padding:4px 8px; background:var(--mint);">ACTIVE</span>{% endif %}
+          </td>
+          <td style="padding:8px 6px;">
+            {% if not r.ended_by_admin %}
+            <form method="post" action="{{ url_for('admin.stats_end_room') }}" onsubmit="return confirm('End this room for everyone?');" style="display:inline;">
+              <input type="hidden" name="session_id" value="{{ r.session_id }}">
+              <button type="submit" class="btn" style="padding:5px 10px; font-size:11px;">End Room</button>
+            </form>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}

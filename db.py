@@ -283,6 +283,13 @@ def get_share(token):
     return row
 
 
+def revoke_share(token):
+    conn = get_db()
+    conn.execute("UPDATE shares SET revoked = 1 WHERE share_token = ?", (token,))
+    conn.commit()
+    conn.close()
+
+
 def is_share_live(token):
     """A share existing isn't enough — must also be un-revoked and
     un-expired. Never distinguish 'expired' from 'never existed' to

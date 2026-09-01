@@ -106,6 +106,24 @@ def stats_clear():
     return redirect(url_for("admin.stats"))
 
 
+@bp.route("/stats/end-room", methods=["POST"])
+@admin_required
+def stats_end_room():
+    session_id = request.form.get("session_id")
+    if session_id:
+        db.end_room(session_id)
+    return redirect(url_for("admin.stats"))
+
+
+@bp.route("/stats/revoke-share", methods=["POST"])
+@admin_required
+def stats_revoke_share():
+    token = request.form.get("token")
+    if token:
+        db.revoke_share(token)
+    return redirect(url_for("admin.stats"))
+
+
 @bp.route("/dashboard", methods=["GET", "POST"])
 @admin_required
 def dashboard():
