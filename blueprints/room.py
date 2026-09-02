@@ -56,6 +56,7 @@ def join_by_code(code):
         return render_template("join.html", error="That code didn't match an active room.")
     session["room_id"] = room["session_id"]
     db.bump_device_count(room["session_id"])
+    db.touch_room(room["session_id"])
     db.log_action(room["session_id"], "join")
     return redirect(url_for("room.guest"))
 
@@ -69,6 +70,7 @@ def join():
             return render_template("join.html", error="That code didn't match an active room.")
         session["room_id"] = room["session_id"]
         db.bump_device_count(room["session_id"])
+        db.touch_room(room["session_id"])
         db.log_action(room["session_id"], "join")
         return redirect(url_for("room.guest"))
     return render_template("join.html")
@@ -152,6 +154,7 @@ def api_queue_add():
     room_id, err = _resolve_action_room()
     if err:
         return err
+    db.touch_room(room_id)
 
     body = request.get_json(silent=True) or {}
     rating_key = body.get("rating_key")
@@ -188,6 +191,7 @@ def api_skip():
     room_id, err = _resolve_action_room()
     if err:
         return err
+    db.touch_room(room_id)
     if not db.can_skip(room_id):
         return jsonify({"error": "Skipping too fast -- try again in a moment."}), 429
     db.record_skip(room_id)
@@ -205,6 +209,7 @@ def api_playpause():
     room_id, err = _resolve_action_room()
     if err:
         return err
+    db.touch_room(room_id)
     room = db.get_room(room_id)
     db.set_play_state(room_id, not room["is_playing"])
     db.log_action(room_id, "play_pause")
@@ -216,6 +221,7 @@ def api_volume():
     room_id, err = _resolve_action_room()
     if err:
         return err
+    db.touch_room(room_id)
     body = request.get_json(silent=True) or {}
     try:
         vol = int(body.get("volume", 0))

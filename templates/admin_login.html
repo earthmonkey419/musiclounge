@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}MusicLounge — Admin Login{% endblock %}
+{% block title %}MusicLounge -- Admin Login{% endblock %}
 {% block content %}
 {% include "partials/_wordmark.html" %}
 <div class="card surface-hi" style="max-width: 360px; margin: 60px auto;">
@@ -9,5 +9,8 @@
     <input type="password" name="password" placeholder="Admin password" autofocus>
     <button type="submit" class="btn btn-primary">Log in</button>
   </form>
+  <p style="text-align:center; margin-top:16px; margin-bottom:0;">
+    <a href="{{ url_for('admin.forgot_password') }}" style="color:var(--ink-soft); font-size:13px;">Forgot password?</a>
+  </p>
 </div>
 {% endblock %}

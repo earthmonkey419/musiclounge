@@ -2,7 +2,7 @@
 Room Mode DB helpers. Short join codes here (not the long/random
 share tokens) are intentional and match the scope doc's reasoning:
 room codes are host-supervised and short-lived, same class of
-guardrail as RiderMusic's 4-digit code — a different security profile
+guardrail as RiderMusic's 4-digit code -- a different security profile
 than the unattended, 24-72hr /linked tokens in share.py.
 """
 import sqlite3
@@ -16,14 +16,6 @@ import config
 
 
 def get_db():
-    # WAL mode + busy_timeout: standard fix for "database is locked"
-    # under concurrent writers. Our gunicorn setup runs 2 worker
-    # PROCESSES (not just threads) x 4 threads each, all potentially
-    # opening their own connection — SQLite's default rollback-journal
-    # locking mode can throw immediately on write contention. WAL lets
-    # readers and a writer coexist without blocking each other, and
-    # busy_timeout makes any remaining contention retry for up to 10s
-    # instead of failing instantly.
     conn = sqlite3.connect(config.DB_PATH, timeout=10)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.row_factory = sqlite3.Row
@@ -42,11 +34,6 @@ def _gen_join_code():
 
 def create_room(room_name):
     conn = get_db()
-    # Enforce a single active room per instance (v1 assumption stated in
-    # the scope doc). Without this, a second "Start a Room" click leaves
-    # two simultaneously-active rooms — the dashboard always shows the
-    # newest one via get_active_room(), but an already-joined guest could
-    # still be attached to the older one, silently diverging.
     conn.execute("UPDATE room_sessions SET ended_by_admin = 1 WHERE ended_by_admin = 0")
 
     session_id = str(uuid.uuid4())
@@ -65,17 +52,42 @@ def create_room(room_name):
 
 
 def get_active_room():
-    """The one active (non-ended, non-expired) room, if any. v1 assumes
-    a single concurrent room per instance, matching RiderMusic."""
+    """The one active room, if any -- ended_by_admin=0 is the only
+    thing that matters here. v1 assumes a single concurrent room per
+    instance, matching RiderMusic.
+
+    Deliberately does NOT filter on expires_at: a room that's simply
+    outlived its idle timeout but was never explicitly ended must
+    still be reachable from the dashboard -- otherwise a party running
+    longer than ROOM_SESSION_TIMEOUT_MINUTES becomes a "stranded"
+    room the admin can see exists (via /admin/stats) but can never
+    get back to or end. See also touch_room(), which extends
+    expires_at on real activity so a genuinely active room rarely
+    hits this wall in the first place -- expiry still matters for
+    guest-facing actions (is_room_live()), just not for whether the
+    admin can find their own room."""
     conn = get_db()
     row = conn.execute(
         """SELECT * FROM room_sessions
-           WHERE ended_by_admin = 0 AND expires_at > ?
+           WHERE ended_by_admin = 0
            ORDER BY started_at DESC LIMIT 1""",
-        (_now(),),
     ).fetchone()
     conn.close()
     return row
+
+
+def touch_room(session_id):
+    """Extends a room's expires_at from now -- a sliding idle timeout
+    instead of a fixed one. Called on every real guest/admin action
+    (join, skip, playpause, queue-add, volume) so a room only expires
+    after genuine inactivity, not just elapsed wall-clock time. This
+    is what stops a long-running party from silently going stale
+    mid-use."""
+    new_expiry = (datetime.utcnow() + timedelta(minutes=config.ROOM_SESSION_TIMEOUT_MINUTES)).isoformat()
+    conn = get_db()
+    conn.execute("UPDATE room_sessions SET expires_at = ? WHERE session_id = ?", (new_expiry, session_id))
+    conn.commit()
+    conn.close()
 
 
 def get_room(session_id):
@@ -113,7 +125,7 @@ def bump_device_count(session_id):
 def set_now_playing(session_id, track):
     """`track` must be the plex_client._track_to_dict() shape: keys
     rating_key/title/artist/duration_sec. If you have a room_queue row
-    instead (different column names — track_ref, not rating_key), pass
+    instead (different column names -- track_ref, not rating_key), pass
     it through queue_row_to_track() first."""
     conn = get_db()
     conn.execute(
@@ -130,7 +142,7 @@ def set_now_playing(session_id, track):
 def queue_row_to_track(row):
     """room_queue rows use different column names (track_ref, not
     rating_key) than plex_client._track_to_dict()'s output. This bridges
-    the two shapes — use this, not a bare dict(row), before passing a
+    the two shapes -- use this, not a bare dict(row), before passing a
     popped queue row into set_now_playing()."""
     return {
         "rating_key": row["track_ref"],
@@ -174,7 +186,7 @@ def record_skip(session_id):
 # --- Queue --------------------------------------------------------------
 
 def is_room_live(session_id):
-    """A room existing isn't enough — it must also be un-ended and
+    """A room existing isn't enough -- it must also be un-ended and
     un-expired. Guest API endpoints need this check explicitly: the
     guest_required decorator only confirms a room_id is *present* in
     the session, not that it's still the currently active room."""
@@ -255,7 +267,7 @@ def log_action(session_id, action_type, detail=""):
 # --- Share Mode (/linked) -------------------------------------------------
 
 def create_share(content_type, content_ref, content_title, content_artist, duration_hours):
-    """Mints a share as a DB row — long random token, expiry set at
+    """Mints a share as a DB row -- long random token, expiry set at
     creation time from the fixed 24/48/72hr set. Per the scope doc:
     a DB row rather than a signed token, because it's free (same
     pattern as room_sessions) and keeps revocation possible."""
@@ -291,9 +303,9 @@ def revoke_share(token):
 
 
 def is_share_live(token):
-    """A share existing isn't enough — must also be un-revoked and
+    """A share existing isn't enough -- must also be un-revoked and
     un-expired. Never distinguish 'expired' from 'never existed' to
-    callers — both should just look like 404, per the scope doc's
+    callers -- both should just look like 404, per the scope doc's
     security reasoning."""
     row = get_share(token)
     if not row:
@@ -321,5 +333,90 @@ def mark_share_delivery(token, method, recipient_email=None, from_display_name=N
         "UPDATE shares SET delivery_method = ?, recipient_email = ?, from_display_name = ? WHERE share_token = ?",
         (method, recipient_email, from_display_name, token),
     )
+    conn.commit()
+    conn.close()
+
+
+# --- Admin password (DB-backed, seeded once from config.py) ---------------
+#
+# config.ADMIN_PASSWORD only matters on the very first login after this
+# feature is deployed: that first check bootstrap-hashes it into this
+# table, and from then on the DATABASE is the source of truth, not the
+# config file/env var. This is what makes an in-app password reset
+# possible at all -- a value that only lives in a file the app can't
+# rewrite at runtime (Docker env vars especially) can never be changed
+# by the app itself. Once bootstrapped, editing config.py's
+# ADMIN_PASSWORD after the fact has no further effect; use the reset
+# flow (or clear the stored hash from the config table) to change it
+# going forward.
+
+def get_config_value(key):
+    conn = get_db()
+    row = conn.execute("SELECT value FROM config WHERE key = ?", (key,)).fetchone()
+    conn.close()
+    return row["value"] if row else None
+
+
+def set_config_value(key, value):
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO config (key, value) VALUES (?, ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (key, value),
+    )
+    conn.commit()
+    conn.close()
+
+
+def verify_admin_password(password):
+    from werkzeug.security import generate_password_hash, check_password_hash
+    import config
+
+    stored_hash = get_config_value("admin_password_hash")
+    if stored_hash is None:
+        stored_hash = generate_password_hash(config.ADMIN_PASSWORD)
+        set_config_value("admin_password_hash", stored_hash)
+    return check_password_hash(stored_hash, password)
+
+
+def set_admin_password(new_password):
+    from werkzeug.security import generate_password_hash
+    set_config_value("admin_password_hash", generate_password_hash(new_password))
+
+
+# --- Password reset tokens -------------------------------------------------
+
+def create_password_reset():
+    """Mints a reset token, 30-minute expiry. Long/random, same
+    security posture as share tokens."""
+    token = secrets.token_urlsafe(32)
+    created_at = _now()
+    expires_at = (datetime.utcnow() + timedelta(minutes=30)).isoformat()
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO password_resets (token, created_at, expires_at, used) VALUES (?, ?, ?, 0)",
+        (token, created_at, expires_at),
+    )
+    conn.commit()
+    conn.close()
+    return token
+
+
+def is_password_reset_valid(token):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM password_resets WHERE token = ?", (token,)).fetchone()
+    conn.close()
+    if not row:
+        return False
+    if row["used"]:
+        return False
+    if row["expires_at"] <= _now():
+        return False
+    return True
+
+
+def use_password_reset(token):
+    conn = get_db()
+    conn.execute("UPDATE password_resets SET used = 1 WHERE token = ?", (token,))
     conn.commit()
     conn.close()

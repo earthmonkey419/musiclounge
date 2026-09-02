@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, Response
+from flask import Blueprint, render_template, request, redirect, url_for, session, Response, current_app
 import io
 import csv
 import base64
@@ -7,6 +7,7 @@ import qrcode
 import config
 import db
 from auth import admin_required
+from email_utils import send_password_reset_email
 
 bp = Blueprint("admin", __name__)
 
@@ -26,7 +27,7 @@ ROOM_CSV_COLUMNS = [
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        if request.form.get("password") == config.ADMIN_PASSWORD:
+        if db.verify_admin_password(request.form.get("password", "")):
             session["is_admin"] = True
             return redirect(url_for("admin.dashboard"))
         return render_template("admin_login.html", error="Wrong password.")
@@ -37,6 +38,40 @@ def login():
 def logout():
     session.pop("is_admin", None)
     return redirect(url_for("home.index"))
+
+
+@bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        if config.ADMIN_RECOVERY_EMAIL:
+            token = db.create_password_reset()
+            reset_url = request.host_url.rstrip("/") + url_for("admin.reset_password", token=token)
+            try:
+                send_password_reset_email(reset_url)
+            except Exception:
+                current_app.logger.exception("Failed to send password reset email")
+        return render_template("admin_forgot_password.html", sent=True)
+    return render_template("admin_forgot_password.html", sent=False)
+
+
+@bp.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    if not db.is_password_reset_valid(token):
+        return render_template("admin_forgot_password.html", sent=False,
+                                error="That reset link is invalid or has expired. Request a new one below.")
+
+    if request.method == "POST":
+        new_password = request.form.get("password", "")
+        confirm = request.form.get("confirm", "")
+        if len(new_password) < 8:
+            return render_template("admin_reset_password.html", token=token, error="Password must be at least 8 characters.")
+        if new_password != confirm:
+            return render_template("admin_reset_password.html", token=token, error="Passwords don't match.")
+        db.set_admin_password(new_password)
+        db.use_password_reset(token)
+        return redirect(url_for("admin.login"))
+
+    return render_template("admin_reset_password.html", token=token, error=None)
 
 
 @bp.route("/stats")
