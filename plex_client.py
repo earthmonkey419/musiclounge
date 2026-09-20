@@ -16,6 +16,8 @@ trusting this in front of a guest. If field-testing turns up a
 mismatch with plexapi's actual behavior, that's expected -- fix here,
 not a sign the approach is wrong.
 """
+import random
+import time
 from plexapi.server import PlexServer
 import config
 
@@ -94,29 +96,46 @@ def search_tracks(query, limit=20):
     return results[:limit]
 
 
-def tracks_by_mood(mood_key, limit=12):
-    """Genre-tag lookup for one mood bucket. Popularity-weighted
-    sampling isn't implemented yet (RiderMusic's version randomly
-    samples from a pool) -- this returns the first `limit` matches.
-    Fine for now; revisit if repeated taps feel too static."""
-    keywords = MOOD_BUCKETS.get(mood_key.lower())
+_MOOD_POOLS = {}          # mood_key -> (timestamp, [track dicts])
+_MOOD_POOL_TTL = 3600     # seconds
+_MOOD_POOL_SIZE = 200
+
+
+def _build_mood_pool(mood_key):
+    keywords = MOOD_BUCKETS.get(mood_key)
     if not keywords:
-        return []
+        return [], False
     section = get_music_section()
-    results = []
-    seen = set()
+    pool, seen, ok = [], set(), True
     try:
         for keyword in keywords:
-            tracks = section.searchTracks(genre=keyword, limit=limit)
-            for t in tracks:
+            for t in section.searchTracks(genre=keyword, limit=_MOOD_POOL_SIZE):
                 if t.ratingKey not in seen:
                     seen.add(t.ratingKey)
-                    results.append(_track_to_dict(t))
-            if len(results) >= limit:
+                    pool.append(_track_to_dict(t))
+            if len(pool) >= _MOOD_POOL_SIZE:
                 break
     except Exception:
-        pass
-    return results[:limit]
+        ok = False
+    return pool, ok
+
+
+def tracks_by_mood(mood_key, limit=12):
+    """Genre-tag lookup for one mood bucket. Builds a pool once (cached
+    for an hour), then returns a fresh random sample of `limit` tracks
+    on every call, so repeat taps surface different music. An empty or
+    partially-failed build is never cached."""
+    key = mood_key.lower()
+    entry = _MOOD_POOLS.get(key)
+    if entry and time.time() - entry[0] < _MOOD_POOL_TTL:
+        pool = entry[1]
+    else:
+        pool, ok = _build_mood_pool(key)
+        if pool and ok:
+            _MOOD_POOLS[key] = (time.time(), pool)
+    if not pool:
+        return []
+    return random.sample(pool, min(limit, len(pool)))
 
 
 def get_track(rating_key):
@@ -209,7 +228,15 @@ def get_content_tracks(content_type, rating_key, limit=100):
     elif content_type == "playlist":
         title = item.title
         artist = None
-        tracks = item.items()[:limit]
+        # Ask Plex for only the first `limit` items. item.items() downloads
+        # the ENTIRE playlist (32K+ tracks for smart playlists like
+        # "All Music", ~85s) just to slice off the first few.
+        tracks = item.fetchItems(
+            f"/playlists/{item.ratingKey}/items",
+            container_start=0,
+            container_size=limit,
+            maxresults=limit,
+        )
     elif content_type == "artist":
         title = item.title
         artist = item.title

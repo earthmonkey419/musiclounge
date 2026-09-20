@@ -12,7 +12,7 @@
     <div style="font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--orange-deep);">NOW PLAYING</div>
   </div>
   <div id="now-playing-block" style="margin-top:8px;">
-    <p id="np-line" style="margin:0;">Nothing yet — search or pick a mood below to get started.</p>
+    <p id="np-line" style="margin:0;display:flex;align-items:center;gap:12px;">Nothing yet — search or pick a mood below to get started.</p>
   </div>
 
   <div style="font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--orange-deep); margin-top:20px;">UP NEXT</div>
@@ -107,16 +107,23 @@ function addToQueue(ratingKey, btn) {
     });
 }
 
+let lastNpKey = null;
+
 function refreshQueue() {
   fetch("/api/room-state")
     .then(r => r.json())
     .then(state => {
       if (state.error) return;
       const npLine = document.getElementById("np-line");
-      if (state.now_playing) {
-        npLine.innerHTML = `<strong>${state.now_playing.title}</strong> <span style="color:var(--ink-soft);">— ${state.now_playing.artist}</span>`;
-      } else {
-        npLine.textContent = "Nothing yet — search or pick a mood below to get started.";
+      const np = state.now_playing;
+      const npKey = np && (np.ref || np.title) ? `${np.ref}|${np.title}` : "";
+      if (npKey !== lastNpKey) {  // only re-render on a real change, so the art doesn't reload every poll
+        lastNpKey = npKey;
+        if (npKey) {
+          npLine.innerHTML = `<img src="/art/${np.ref}" onerror="this.style.display='none'" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex:none;"><div><strong>${np.title}</strong> <span style="color:var(--ink-soft);">— ${np.artist}</span></div>`;
+        } else {
+          npLine.textContent = "Nothing yet — search or pick a mood below to get started.";
+        }
       }
       const list = document.getElementById("queue-list");
       if (state.queue.length === 0) {

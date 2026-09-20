@@ -78,9 +78,10 @@ def email_share(token):
 
     share = db.get_share(token)
     share_url = request.host_url.rstrip("/") + url_for("linked.view_share", share_token=token)
+    art_url = request.host_url.rstrip("/") + url_for("room.art", rating_key=share["content_ref"])
 
     try:
-        send_share_email(recipient, share_url, share["content_title"], display_name)
+        send_share_email(recipient, share_url, share["content_title"], display_name, art_url=art_url)
     except Exception:
         current_app.logger.exception("SMTP send failed for token=%r to=%r", token, recipient)
         return jsonify({"error": "Couldn't send the email — check SMTP settings in config.py."}), 502

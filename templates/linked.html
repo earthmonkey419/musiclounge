@@ -93,7 +93,6 @@ function playTrack(i, fromShuffleAdvance) {
   audioEl.src = "/stream/" + TRACKS[i].rating_key;
   audioEl.load();
   audioEl.play().catch(() => {});
-  document.getElementById("hero-art").src = "/art/" + TRACKS[i].rating_key;
   document.getElementById("now-playing-title").textContent = TRACKS[i].title;
   document.getElementById("now-playing-artist").textContent = TRACKS[i].artist || "";
   highlightRow(i);
