@@ -62,8 +62,23 @@ def _track_to_dict(track):
 def search_tracks(query, limit=20):
     """Layered search: literal artist match, then literal title match,
     then Plex's fuzzy hub search. Returns a list of track dicts,
-    deduplicated by rating_key, capped at `limit`."""
+    deduplicated by rating_key, capped at `limit`.
+
+    Ported to match RiderMusic's exact proven implementation after
+    real-world testing found two root-cause bugs in the original
+    version here:
+    1. Artist match used section.searchArtists(title=query), trusting
+       Plex's server-side title filter -- RiderMusic instead fetches
+       ALL artists (no title kwarg) and filters client-side by
+       substring, which is what actually works reliably.
+    2. Title match used section.searchTracks(title=query, ...) --
+       plain title= does not do a substring/contains match. The fix
+       is the `title__icontains` filter operator, which does. This
+       alone explains "the firstborn" returning nothing (partial
+       phrase match) while "blind lemon jefferson" (matching a full
+       track title) worked."""
     section = get_music_section()
+    q_lower = query.lower()
     results = []
     seen = set()
 
@@ -74,19 +89,20 @@ def search_tracks(query, limit=20):
                 results.append(_track_to_dict(t))
 
     try:
-        artists = section.searchArtists(title=query)
-        for artist in artists[:5]:
-            add(artist.tracks()[:limit])
+        all_artists = section.searchArtists()
+        matching_artists = [a for a in all_artists if q_lower in a.title.lower()]
+        for artist in matching_artists[:8]:
+            add(artist.tracks()[:20])
     except Exception:
         pass
 
     if len(results) < limit:
         try:
-            add(section.searchTracks(title=query, limit=limit))
+            add(section.searchTracks(title__icontains=query, limit=limit))
         except Exception:
             pass
 
-    if len(results) < limit:
+    if not results:
         try:
             hub_results = get_plex().search(query, mediatype="track")
             add(hub_results[:limit])
@@ -96,46 +112,45 @@ def search_tracks(query, limit=20):
     return results[:limit]
 
 
-_MOOD_POOLS = {}          # mood_key -> (timestamp, [track dicts])
-_MOOD_POOL_TTL = 3600     # seconds
-_MOOD_POOL_SIZE = 200
+def tracks_by_mood(mood_key, limit=12):
+    """Genre-tag lookup for one mood bucket -- Player's live-Plex
+    fallback when MusicMind isn't available (see musicmind_bridge.py
+    for the preferred fast path).
 
-
-def _build_mood_pool(mood_key):
-    keywords = MOOD_BUCKETS.get(mood_key)
+    Ported to match RiderMusic's proven approach after the same
+    root-cause bug found in search_tracks(): the original version
+    here queried section.searchTracks(genre=keyword, limit=limit)
+    with our own guessed keyword (e.g. "soul") as an exact match --
+    but real Plex genre tags are specific ("Neo-Soul", "Motown"), so
+    an exact match against a guessed keyword rarely hits anything.
+    The fix: enumerate the library's REAL genre tag vocabulary via
+    listFilterChoices(), filter those tag strings by keyword substring
+    client-side, then query exactly per real matching tag."""
+    keywords = MOOD_BUCKETS.get(mood_key.lower())
     if not keywords:
-        return [], False
+        return []
     section = get_music_section()
-    pool, seen, ok = [], set(), True
+    results = []
+    seen = set()
     try:
-        for keyword in keywords:
-            for t in section.searchTracks(genre=keyword, limit=_MOOD_POOL_SIZE):
+        all_genres = section.listFilterChoices("genre", libtype="track")
+        matching_tags = [
+            g.title for g in all_genres
+            if any(kw in g.title.lower() for kw in keywords)
+        ]
+        for tag in matching_tags:
+            if len(results) >= limit:
+                break
+            tracks = section.searchTracks(**{"track.genre": tag}, limit=limit)
+            for t in tracks:
                 if t.ratingKey not in seen:
                     seen.add(t.ratingKey)
-                    pool.append(_track_to_dict(t))
-            if len(pool) >= _MOOD_POOL_SIZE:
-                break
+                    results.append(_track_to_dict(t))
+                if len(results) >= limit:
+                    break
     except Exception:
-        ok = False
-    return pool, ok
-
-
-def tracks_by_mood(mood_key, limit=12):
-    """Genre-tag lookup for one mood bucket. Builds a pool once (cached
-    for an hour), then returns a fresh random sample of `limit` tracks
-    on every call, so repeat taps surface different music. An empty or
-    partially-failed build is never cached."""
-    key = mood_key.lower()
-    entry = _MOOD_POOLS.get(key)
-    if entry and time.time() - entry[0] < _MOOD_POOL_TTL:
-        pool = entry[1]
-    else:
-        pool, ok = _build_mood_pool(key)
-        if pool and ok:
-            _MOOD_POOLS[key] = (time.time(), pool)
-    if not pool:
-        return []
-    return random.sample(pool, min(limit, len(pool)))
+        pass
+    return results[:limit]
 
 
 def get_track(rating_key):

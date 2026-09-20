@@ -75,3 +75,9 @@ SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "REPLACE_ME")
 SMTP_USE_TLS = _bool("SMTP_USE_TLS", True)
 SMTP_FROM_ADDRESS = os.environ.get("SMTP_FROM_ADDRESS", "REPLACE_ME")
 SMTP_FROM_DISPLAY_NAME = os.environ.get("SMTP_FROM_DISPLAY_NAME", "MusicLounge")
+
+# --- MusicMind integration (optional) ---
+# Path to MusicMind for Plex's musicmind.db, mounted READ-ONLY. When set,
+# search, mood pills and tags use MusicMind's local index (fast, and it
+# enables the Tags field). Leave empty to use live Plex only -- nothing breaks.
+MUSICMIND_DB_PATH = os.environ.get("MUSICMIND_DB_PATH", "")

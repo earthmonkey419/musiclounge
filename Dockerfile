@@ -48,6 +48,7 @@ EXPOSE 8679
 # on every start, not just the first) before handing off to gunicorn.
 # gthread, not plain sync workers: a sync worker blocks for the entire
 # duration of a request, which for /stream and /art means a single slow
-# listener holds a worker hostage for minutes. 2 processes x 4 threads
-# = 8 concurrent request slots instead of just 2. See MUSICLOUNGE-SCOPE.md.
+# listener holds a worker hostage for minutes. 1 process x 16 threads
+# = 16 concurrent request slots. One process on purpose: the search/mood
+# caches live in memory (see README). See MUSICLOUNGE-SCOPE.md.
 ENTRYPOINT ["./docker-entrypoint.sh"]

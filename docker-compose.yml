@@ -26,8 +26,13 @@ services:
       - SMTP_PASSWORD=REPLACE_ME
       - SMTP_FROM_ADDRESS=REPLACE_ME
       - SMTP_FROM_DISPLAY_NAME=MusicLounge
+      # Optional MusicMind integration (see README). Uncomment this line
+      # AND the MusicMind volume below; leave both off to use live Plex only.
+      # - MUSICMIND_DB_PATH=/musicmind/musicmind.db
     volumes:
       - musiclounge-data:/app/data
+      # Optional: the FOLDER containing MusicMind's musicmind.db, read-only.
+      # - /path/to/musicmind/data:/musicmind:ro
       # Optional: uncomment to use a file instead of/alongside the
       # environment variables above. A bind-mounted config.py always
       # wins over env vars for any value it sets.

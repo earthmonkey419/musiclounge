@@ -35,49 +35,176 @@
     <div class="chip" onclick="loadMood('rock')">ROCK</div>
   </div>
 
+  <div style="font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--orange-deep); margin:20px 0 10px;">TAGS</div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <input id="tag-input" type="text" list="tag-options" placeholder="Type a tag…" autocomplete="off" style="flex:1; min-width:0;">
+    <datalist id="tag-options"></datalist>
+    <button class="btn btn-primary" style="padding:8px 14px; font-size:13px; flex:none;" onclick="runTagExplore()">EXPLORE</button>
+  </div>
+
   <div id="results" style="margin-top:20px;"></div>
+  <div id="results-sentinel" style="height:1px;"></div>
 </div>
 
 <script>
 let searchTimer = null;
+// Search and tag browsing are paginated (offset/limit, same response
+// shape as Player's guest page). Mood is one flat fetch: the server
+// returns a fresh shuffled sample from a cached pool on every click.
+const RESULTS_PAGE_SIZE = 20;
+let currentQueryType = null;   // 'search' or 'tag'
+let currentQueryValue = null;
+let currentShuffleSeed = null; // tag browsing; reset on each fresh Explore
+let resultsOffset = 0;
+let hasMoreResults = false;
+let isLoadingResults = false;
+let resultsObserver = null;
+
 function debouncedSearch() {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(runSearch, 350);
 }
 
-function runSearch() {
-  const q = document.getElementById("search-input").value.trim();
-  if (!q) { document.getElementById("results").innerHTML = ""; return; }
-  fetch("/api/search?q=" + encodeURIComponent(q))
-    .then(r => r.json())
-    .then(renderResults)
-    .catch(console.error);
-}
-
-function loadMood(mood) {
-  fetch("/api/mood/" + mood)
-    .then(r => r.json())
-    .then(renderResults)
-    .catch(console.error);
-}
-
-function renderResults(tracks) {
-  const el = document.getElementById("results");
-  if (tracks.error) {
-    el.innerHTML = `<p style="color:var(--ink-soft);">Couldn't reach the library right now — try again in a moment.</p>`;
-    return;
-  }
-  if (tracks.length === 0) {
-    el.innerHTML = `<p style="color:var(--ink-soft);">No matches. Try another search or mood.</p>`;
-    return;
-  }
-  el.innerHTML = tracks.map(t => `
+function trackRowHtml(t) {
+  return `
     <div class="queue-item">
       <img class="art-sm" src="/art/${t.rating_key}" onerror="this.style.opacity=0">
       <div style="flex:1;">${t.title} <span style="color:var(--ink-soft);">— ${t.artist}</span></div>
       <button class="btn btn-primary" style="padding:8px 14px; font-size:13px;" onclick="addToQueue('${t.rating_key}', this)">+ ADD</button>
-    </div>`).join("");
+    </div>`;
 }
+
+function emptyMsg(text) {
+  return `<p style="color:var(--ink-soft);">${text}</p>`;
+}
+
+function runSearch() {
+  const q = document.getElementById("search-input").value.trim();
+  if (!q) {
+    currentQueryType = null;
+    hasMoreResults = false;
+    disconnectResultsObserver();
+    document.getElementById("results").innerHTML = "";
+    return;
+  }
+  currentQueryType = "search";
+  currentQueryValue = q;
+  loadResultsPage(true);
+}
+
+function runTagExplore() {
+  const tag = document.getElementById("tag-input").value.trim();
+  if (!tag) return;
+  currentQueryType = "tag";
+  currentQueryValue = tag;
+  loadResultsPage(true);
+}
+
+function loadResultsPage(isFirstPage) {
+  if (isLoadingResults || !currentQueryType) return;
+  isLoadingResults = true;
+  const type = currentQueryType;
+  const value = currentQueryValue;
+  if (isFirstPage) {
+    resultsOffset = 0;
+    currentShuffleSeed = null; // fresh browse: always start a new shuffle
+  }
+  let url;
+  if (type === "search") {
+    url = `/api/search?q=${encodeURIComponent(value)}&offset=${resultsOffset}&limit=${RESULTS_PAGE_SIZE}`;
+  } else {
+    const params = new URLSearchParams({ name: value, offset: resultsOffset, limit: RESULTS_PAGE_SIZE });
+    if (currentShuffleSeed !== null) params.set("seed", currentShuffleSeed);
+    url = `/api/tag?${params.toString()}`;
+  }
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      isLoadingResults = false;
+      if (type !== currentQueryType || value !== currentQueryValue) return; // a newer query started meanwhile
+      const el = document.getElementById("results");
+      if (data.error) {
+        el.innerHTML = emptyMsg(data.error);
+        hasMoreResults = false;
+        disconnectResultsObserver();
+        return;
+      }
+      if (isFirstPage) el.innerHTML = "";
+      if (isFirstPage && data.results.length === 0) {
+        el.innerHTML = emptyMsg("No matches. Try another search, tag, or mood.");
+        hasMoreResults = false;
+        disconnectResultsObserver();
+        return;
+      }
+      el.insertAdjacentHTML("beforeend", data.results.map(trackRowHtml).join(""));
+      hasMoreResults = !!data.has_more;
+      resultsOffset = typeof data.next_offset === "number" ? data.next_offset : resultsOffset + data.results.length;
+      if (type === "tag" && typeof data.seed === "number") currentShuffleSeed = data.seed;
+      ensureResultsObserver();
+    })
+    .catch(() => {
+      isLoadingResults = false;
+      document.getElementById("results").innerHTML = emptyMsg("Couldn't reach the library right now — try again in a moment.");
+      hasMoreResults = false;
+      disconnectResultsObserver();
+    });
+}
+
+function ensureResultsObserver() {
+  if (!hasMoreResults) { disconnectResultsObserver(); return; }
+  if (resultsObserver) return;
+  const sentinel = document.getElementById("results-sentinel");
+  resultsObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && hasMoreResults && !isLoadingResults && currentQueryType) {
+      loadResultsPage(false);
+    }
+  }, { rootMargin: "300px" });
+  resultsObserver.observe(sentinel);
+}
+
+function disconnectResultsObserver() {
+  if (resultsObserver) { resultsObserver.disconnect(); resultsObserver = null; }
+}
+
+function loadMood(mood) {
+  // Reset search/tag pagination so a leftover scroll-triggered page
+  // load can't fire after switching to a mood.
+  currentQueryType = null;
+  hasMoreResults = false;
+  disconnectResultsObserver();
+  fetch("/api/mood/" + mood)
+    .then(r => r.json())
+    .then(renderMoodResults)
+    .catch(console.error);
+}
+
+function renderMoodResults(tracks) {
+  const el = document.getElementById("results");
+  if (tracks.error) {
+    el.innerHTML = emptyMsg("Couldn't reach the library right now — try again in a moment.");
+    return;
+  }
+  if (tracks.length === 0) {
+    el.innerHTML = emptyMsg("No matches. Try another search or mood.");
+    return;
+  }
+  el.innerHTML = tracks.map(trackRowHtml).join("");
+}
+
+// Tags typing aid, sourced from MusicMind's track_tags via /api/tags.
+// Empty (no suggestions) when MusicMind isn't configured. Not a gate:
+// the backend answers unknown tags with "No matches".
+const tagOptionsEl = document.getElementById("tag-options");
+fetch("/api/tags")
+  .then(r => r.json())
+  .then(data => {
+    (data.tags || []).forEach(t => {
+      const option = document.createElement("option");
+      option.value = t.tag;
+      tagOptionsEl.appendChild(option);
+    });
+  })
+  .catch(() => {});
 
 function addToQueue(ratingKey, btn) {
   btn.disabled = true;
@@ -117,7 +244,7 @@ function refreshQueue() {
       const npLine = document.getElementById("np-line");
       const np = state.now_playing;
       const npKey = np && (np.ref || np.title) ? `${np.ref}|${np.title}` : "";
-      if (npKey !== lastNpKey) {  // only re-render on a real change, so the art doesn't reload every poll
+      if (npKey !== lastNpKey) {  // re-render only on a real change, so the art doesn't reload every poll
         lastNpKey = npKey;
         if (npKey) {
           npLine.innerHTML = `<img src="/art/${np.ref}" onerror="this.style.display='none'" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex:none;"><div><strong>${np.title}</strong> <span style="color:var(--ink-soft);">— ${np.artist}</span></div>`;

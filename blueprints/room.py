@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 import config
 import db
 import plex_client
+import musicmind_bridge
 from auth import guest_required
 
 bp = Blueprint("room", __name__)
@@ -92,16 +93,77 @@ def guest():
 
 @bp.route("/api/search")
 def api_search():
+    """Guest-facing search -- now MusicMind-accelerated and paginated,
+    the same search_tracks_page() Player's own /api/player/search
+    already uses. search_tracks_page()'s underlying _build_search_pool()
+    falls back to live plex_client.search_tracks() internally whenever
+    MusicMind is unavailable, so this degrades exactly as safely as
+    Player's search does -- confirmed directly, not assumed.
+
+    Deliberately does NOT include album results the way Player's search
+    does: guests have no album detail page to drill into (Browse is
+    admin-only), so an album tile would have nothing sensible to do
+    here. Scoped decision, not an oversight."""
     room_id, err = _resolve_action_room()
     if err:
         return err
     q = request.args.get("q", "").strip()
     if not q:
-        return jsonify([])
+        return jsonify({"results": [], "has_more": False, "next_offset": 0})
+    offset = max(0, request.args.get("offset", 0, type=int) or 0)
+    limit = min(50, max(1, request.args.get("limit", 20, type=int) or 20))
     try:
-        return jsonify(plex_client.search_tracks(q))
+        page = musicmind_bridge.search_tracks_page(q, offset=offset, limit=limit)
+        return jsonify(page)
     except Exception:
-        current_app.logger.exception("Plex search failed for query: %r", q)
+        current_app.logger.exception("Guest search failed for query: %r", q)
+        return jsonify({"error": "Couldn't reach the music library. Try again in a moment."}), 502
+
+
+@bp.route("/api/tags")
+def api_tags():
+    """Guest-facing tag list for the predictive-typing Tags field --
+    same available_tags() Player's own /api/player/tags uses. Empty
+    list (not an error) when MusicMind isn't configured, same as
+    Player's version -- the frontend field simply has no suggestions
+    in that case, no fallback routing built for guests (see api_tag()
+    below for why)."""
+    room_id, err = _resolve_action_room()
+    if err:
+        return err
+    try:
+        tags = musicmind_bridge.available_tags()
+        return jsonify({"tags": tags or []})
+    except Exception:
+        current_app.logger.exception("Guest tag list lookup failed")
+        return jsonify({"tags": []})
+
+
+@bp.route("/api/tag")
+def api_tag():
+    """Guest-facing paginated tag browse -- same tracks_by_tag_page()
+    Player's own /api/player/tag uses, including shuffle_seed threading
+    so repeat Explore submissions surface different tracks. Unlike
+    /api/search above, this has NO live-Plex fallback -- tags come
+    purely from MusicMind's track_tags table, which has no Plex
+    equivalent to fall back to. Same limitation Player's own tag
+    browsing has; not a guest-specific gap."""
+    room_id, err = _resolve_action_room()
+    if err:
+        return err
+    tag = request.args.get("name", "")
+    if not tag:
+        return jsonify({"error": "Missing tag name."}), 400
+    offset = max(0, request.args.get("offset", 0, type=int) or 0)
+    limit = min(50, max(1, request.args.get("limit", 20, type=int) or 20))
+    shuffle_seed = request.args.get("seed", type=int)
+    try:
+        page = musicmind_bridge.tracks_by_tag_page(tag, offset=offset, limit=limit, shuffle_seed=shuffle_seed)
+        if page is None:
+            return jsonify({"error": "Tag browsing needs MusicMind, which isn't available right now."}), 502
+        return jsonify(page)
+    except Exception:
+        current_app.logger.exception("Guest tag browse failed for: %r", tag)
         return jsonify({"error": "Couldn't reach the music library. Try again in a moment."}), 502
 
 
@@ -111,7 +173,11 @@ def api_mood(mood_key):
     if err:
         return err
     try:
-        return jsonify(plex_client.tracks_by_mood(mood_key))
+        # Cached pool + a fresh shuffle on every click (no seed), so
+        # repeat pill clicks surface different tracks. Plain list, same
+        # shape the guest page's loadMood() already expects.
+        page = musicmind_bridge.tracks_by_mood_page(mood_key, offset=0, limit=20)
+        return jsonify(page["results"])
     except Exception:
         current_app.logger.exception("Plex mood lookup failed for: %r", mood_key)
         return jsonify({"error": "Couldn't reach the music library. Try again in a moment."}), 502

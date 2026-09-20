@@ -165,6 +165,34 @@ bind mount in docker-compose.yml instead — that still works exactly
 like the file-based setup above, and takes priority over any
 environment variables you also set.
 
+### MusicMind integration (optional)
+
+MusicLounge works fine on its own. If you also run
+[MusicMind for Plex](https://musicmind.vp-fun.com/), you can point
+MusicLounge at MusicMind's database and guests get:
+
+- **Faster, more complete search**, matched against MusicMind's local
+  index instead of live Plex calls
+- **Mood pills** built from MusicMind's tags, reshuffled on every tap
+- **A Tags field** with type-ahead suggestions (needs MusicMind; without
+  it the field has no suggestions and Explore says so)
+
+Set `MUSICMIND_DB_PATH` to the full path of `musicmind.db`, either in
+`config.py` or as an environment variable. MusicLounge only ever opens
+it read-only. Leave it empty and everything uses live Plex.
+
+**Docker:** mount the folder that contains `musicmind.db` and set
+`MUSICMIND_DB_PATH` to the in-container path. Both lines are in
+`docker-compose.yml`, commented out.
+
+The integration reads MusicMind's `tracks` and `track_tags` tables. If a
+MusicMind update ever changes those, MusicLounge falls back to live Plex
+instead of erroring.
+
+MusicLounge runs a single gunicorn worker (with several threads) on
+purpose: its search and mood caches live in memory, and extra workers
+would each keep their own copy.
+
 ## Exposing it to the internet
 
 Both Room Mode guests and Share Mode recipients need to reach the app
