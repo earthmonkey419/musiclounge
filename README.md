@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/og-image.jpg" alt="MusicLounge Jukebox for Plex" width="100%">
+  <img src="assets/og-image.jpg" alt="MusicLounge Jukebox (Lite) for Plex" width="100%">
 </p>
 
-# MusicLounge Jukebox for Plex
+# MusicLounge Jukebox (Lite) for Plex
 
 A self-hosted jukebox for your Plex music library — from the makers of
 [MusicMind for Plex](https://musicmind.vp-fun.com/) and
@@ -152,7 +152,7 @@ through Portainer's own UI.
        SMTP_USERNAME=REPLACE_ME
        SMTP_PASSWORD=REPLACE_ME
        SMTP_FROM_ADDRESS=REPLACE_ME
-       SMTP_FROM_DISPLAY_NAME=MusicLounge
+       SMTP_FROM_DISPLAY_NAME=MusicLounge Jukebox (Lite)
 
    Set HOST_PORT to something other than 8679 if that port is
    already taken on your box. Leave COOKIE_SECURE=false until this
@@ -167,9 +167,9 @@ environment variables you also set.
 
 ### MusicMind integration (optional)
 
-MusicLounge works fine on its own. If you also run
+MusicLounge Jukebox (Lite) works fine on its own. If you also run
 [MusicMind for Plex](https://musicmind.vp-fun.com/), you can point
-MusicLounge at MusicMind's database and guests get:
+MusicLounge Jukebox (Lite) at MusicMind's database and guests get:
 
 - **Faster, more complete search**, matched against MusicMind's local
   index instead of live Plex calls
@@ -178,7 +178,7 @@ MusicLounge at MusicMind's database and guests get:
   it the field has no suggestions and Explore says so)
 
 Set `MUSICMIND_DB_PATH` to the full path of `musicmind.db`, either in
-`config.py` or as an environment variable. MusicLounge only ever opens
+`config.py` or as an environment variable. MusicLounge Jukebox (Lite) only ever opens
 it read-only. Leave it empty and everything uses live Plex.
 
 **Docker:** mount the folder that contains `musicmind.db` and set
@@ -186,10 +186,10 @@ it read-only. Leave it empty and everything uses live Plex.
 `docker-compose.yml`, commented out.
 
 The integration reads MusicMind's `tracks` and `track_tags` tables. If a
-MusicMind update ever changes those, MusicLounge falls back to live Plex
+MusicMind update ever changes those, MusicLounge Jukebox (Lite) falls back to live Plex
 instead of erroring.
 
-MusicLounge runs a single gunicorn worker (with several threads) on
+MusicLounge Jukebox (Lite) runs a single gunicorn worker (with several threads) on
 purpose: its search and mood caches live in memory, and extra workers
 would each keep their own copy.
 
@@ -206,7 +206,7 @@ Cloudflare:
    existing one if you're already running other services through
    Cloudflare)
 2. Add a **Public Hostname** — pick a subdomain, and set the **Service
-   URL** to `http://localhost:8679` (or whatever host/port MusicLounge is
+   URL** to `http://localhost:8679` (or whatever host/port MusicLounge Jukebox (Lite) is
    actually running on)
 3. **Leave the Path field completely empty.** Setting it to something
    specific (e.g. testing `/admin/dashboard` first and forgetting to
