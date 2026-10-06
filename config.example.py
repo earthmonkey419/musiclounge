@@ -41,6 +41,7 @@ def _int_list(key, default):
 
 # --- Plex ---
 PLEX_URL = os.environ.get("PLEX_URL", "http://10.0.0.251:32400")
+# Create a dedicated token for this app with:  python3 make_plex_token.py --write
 PLEX_TOKEN = os.environ.get("PLEX_TOKEN", "REPLACE_ME")
 MUSIC_LIB = os.environ.get("MUSIC_LIB", "Music")
 

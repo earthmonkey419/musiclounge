@@ -85,13 +85,24 @@
   </div>
 </div>
 
+<script src="{{ url_for('static', filename='js/gapless.js') }}?v=2"></script>
 <script>
 const ROOM_ID = {{ room["session_id"]|tojson }};
 const JOIN_URL = {{ join_url|tojson }};
 const INITIAL_VOLUME = {{ room["volume"]|tojson }};
 
-const audioEl = document.getElementById("player");
+let audioEl = document.getElementById("player");   // ACTIVE element; MLGapless swaps it on handoff
 let currentTrackRef = {{ room["now_playing_ref"]|tojson }};
+let upNextRef = null;         // head of the server queue as of the last poll (the preload target)
+let skipInFlight = false;     // optimistic advance underway: ignore polls until the server answers
+let pollSeq = 0, minSeq = 0;  // polls issued before the last skip completed are stale
+const gapless = MLGapless.create({
+  audio: audioEl,
+  urlFor: ref => "/stream/" + ref,
+  nextRef: () => upNextRef,
+  onSwap: el => { audioEl = el; },
+  onBlocked: () => { document.getElementById("tap-to-play-banner").style.display = "block"; },
+});
 audioEl.volume = INITIAL_VOLUME / 100;
 
 // If the room starts already "playing" (e.g. a track was queued by a
@@ -125,8 +136,22 @@ function togglePlayPause() {
   postAction("/api/playpause");
 }
 
-audioEl.addEventListener("ended", () => {
-  postAction("/api/skip");
+gapless.on("ended", () => {
+  // Optimistic, gapless advance: start the server's up-next track NOW (the
+  // preloaded element when it matches) and tell the server in parallel,
+  // instead of waiting out a skip-POST + state-GET round trip. The server
+  // stays authoritative: when state comes back and disagrees (queue changed
+  // under us), syncAudio() corrects to the server's choice.
+  const endedRef = currentTrackRef;
+  if (upNextRef) {
+    currentTrackRef = upNextRef;
+    upNextRef = null;
+    gapless.start(currentTrackRef);
+  }
+  skipInFlight = true;
+  fetch("/api/skip", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({auto: true, from: endedRef})})
+    .catch(console.error)
+    .finally(() => { skipInFlight = false; minSeq = pollSeq + 1; refreshState(); });
 });
 
 function postAction(path) {
@@ -149,9 +174,12 @@ function syncAudio(state) {
   }
   if (state.now_playing.ref !== currentTrackRef) {
     currentTrackRef = state.now_playing.ref;
-    audioEl.src = "/stream/" + currentTrackRef;
-    audioEl.load();
-    if (state.now_playing.is_playing) attemptPlay();
+    if (state.now_playing.is_playing) {
+      gapless.start(currentTrackRef);   // swaps to the preloaded element when it matches
+    } else {
+      audioEl.src = "/stream/" + currentTrackRef;
+      audioEl.load();
+    }
   } else {
     if (state.now_playing.is_playing && audioEl.paused) attemptPlay();
     if (!state.now_playing.is_playing && !audioEl.paused) audioEl.pause();
@@ -160,10 +188,12 @@ function syncAudio(state) {
 }
 
 function refreshState() {
+  const seq = ++pollSeq;
   fetch("/api/room-state")
     .then(r => r.json())
     .then(state => {
       if (state.error) return;
+      if (skipInFlight || seq < minSeq) return;   // stale: raced an optimistic advance
       document.getElementById("np-title").textContent = state.now_playing ? state.now_playing.title : "Nothing queued yet";
       document.getElementById("np-artist").textContent = state.now_playing ? state.now_playing.artist : "Add a song from the guest portal to get started";
       document.getElementById("playpause-btn").textContent = state.now_playing && state.now_playing.is_playing ? "⏸" : "▶";
@@ -185,6 +215,8 @@ function refreshState() {
           </div>`).join("");
       }
       syncAudio(state);
+      upNextRef = state.queue.length ? state.queue[0].track_ref : null;
+      gapless.refresh();
     })
     .catch(console.error);
 }

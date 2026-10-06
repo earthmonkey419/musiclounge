@@ -118,8 +118,20 @@ collision.
 **Before real use:** `COOKIE_SECURE` must be `True`, which requires the
 app to be served over HTTPS. `False` is for local development only.
 
-**Getting a real Plex token:** see
-[Plex's own guide](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
+**Getting a Plex token (recommended):** give MusicLounge Jukebox its own. On any
+machine with Python (`pip install plexapi requests`, or inside the app's
+venv), run `python3 make_plex_token.py` from the app folder, open the link it
+prints, sign in to Plex and approve. It registers a device named "MusicLounge Jukebox"
+under Plex's Authorized Devices and prints the token to use as `PLEX_TOKEN`.
+Add `--write` to have it update `config.py` and/or `.env` for you (the old
+files are kept as `<name>.bak-<timestamp>`). Then restart the app
+(`pm2 restart musiclounge`, or `docker compose up -d`).
+
+Why not copy a token out of Plex Web? A token taken from the browser belongs
+to that browser session and stops working the moment you sign out of it,
+taking the app with it. Don't remove the "MusicLounge Jukebox" entry from Authorized
+Devices, and give each of your apps its own token. (Plex's
+[manual guide](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/) still works if you prefer.)
 
 ### Using Portainer
 

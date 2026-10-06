@@ -47,15 +47,28 @@
 
 <button id="back-to-top" class="btn btn-round btn-primary" onclick="window.scrollTo({top:0, behavior:'smooth'})" title="Back to top" style="position:fixed; bottom:24px; right:24px; z-index:10; display:none;">⬆</button>
 
+<script src="{{ url_for('static', filename='js/gapless.js') }}?v=2"></script>
 <script>
 const TRACKS = {{ tracks|tojson }};
 const EXPIRES_AT = {{ share["expires_at"]|tojson }};
-const audioEl = document.getElementById("player");
+let audioEl = document.getElementById("player");   // ACTIVE element; MLGapless swaps it on handoff
+const gapless = MLGapless.create({
+  audio: audioEl,
+  urlFor: ref => "/stream/" + ref,
+  nextRef: peekNextRef,
+  onSwap: el => { audioEl = el; },
+});
 let currentIndex = -1;
 
 let shuffleOn = false;
 let shuffleQueue = [];
 let playHistory = [];
+
+function peekNextRef() {
+  if (currentIndex === -1) return null;
+  if (shuffleOn) return shuffleQueue.length ? TRACKS[shuffleQueue[0]].rating_key : null;
+  return currentIndex + 1 < TRACKS.length ? TRACKS[currentIndex + 1].rating_key : null;
+}
 
 function highlightRow(i) {
   document.querySelectorAll(".track-row").forEach(el => el.style.fontWeight = "normal");
@@ -90,9 +103,7 @@ function playTrack(i, fromShuffleAdvance) {
   }
 
   currentIndex = i;
-  audioEl.src = "/stream/" + TRACKS[i].rating_key;
-  audioEl.load();
-  audioEl.play().catch(() => {});
+  gapless.start(TRACKS[i].rating_key);
   document.getElementById("now-playing-title").textContent = TRACKS[i].title;
   document.getElementById("now-playing-artist").textContent = TRACKS[i].artist || "";
   highlightRow(i);
@@ -135,7 +146,7 @@ function prevTrack() {
   }
 }
 
-audioEl.addEventListener("ended", nextTrack);
+gapless.on("ended", nextTrack);
 
 function updateCountdown() {
   const expires = new Date(EXPIRES_AT + "Z").getTime();

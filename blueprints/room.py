@@ -258,6 +258,27 @@ def api_skip():
     if err:
         return err
     db.touch_room(room_id)
+
+    body = request.get_json(silent=True) or {}
+    if body.get("auto") and session.get("is_admin"):
+        # Natural end-of-track from the HOST player (admin only -- guests
+        # never reach this branch). Idempotent: advances only if the track
+        # that ended is still the one playing, so a duplicate (second
+        # dashboard tab, retry, a manual skip that already advanced) is a
+        # harmless no-op instead of skipping a track. Exempt from the
+        # manual-skip rate limit, and doesn't feed it either.
+        from_ref = str(body.get("from") or "")
+        room = db.get_room(room_id)
+        if not from_ref or not room or str(room["now_playing_ref"] or "") != from_ref:
+            return jsonify({"ok": True, "noop": True})
+        nxt = db.pop_next(room_id)
+        if nxt:
+            db.set_now_playing(room_id, db.queue_row_to_track(nxt))
+        else:
+            db.set_play_state(room_id, False)
+        db.log_action(room_id, "auto_advance")
+        return jsonify({"ok": True})
+
     if not db.can_skip(room_id):
         return jsonify({"error": "Skipping too fast -- try again in a moment."}), 429
     db.record_skip(room_id)
