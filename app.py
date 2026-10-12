@@ -1,5 +1,5 @@
 """
-MusicLounge Jukebox for Plex — app entrypoint.
+MusicLounge Jukebox (Lite) for Plex — app entrypoint.
 
 Route map (per scope doc):
   /                    home — "Start a Room" / "Share Some Music"

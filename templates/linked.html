@@ -47,7 +47,7 @@
 
 <button id="back-to-top" class="btn btn-round btn-primary" onclick="window.scrollTo({top:0, behavior:'smooth'})" title="Back to top" style="position:fixed; bottom:24px; right:24px; z-index:10; display:none;">⬆</button>
 
-<script src="{{ url_for('static', filename='js/gapless.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/gapless.js') }}?v=3"></script>
 <script>
 const TRACKS = {{ tracks|tojson }};
 const EXPIRES_AT = {{ share["expires_at"]|tojson }};

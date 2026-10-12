@@ -1,5 +1,5 @@
 """
-MusicLounge Jukebox for Plex -- config.
+MusicLounge Jukebox (Lite) for Plex -- config.
 
 Two valid ways to use this file:
 

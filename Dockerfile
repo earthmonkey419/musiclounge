@@ -1,4 +1,4 @@
-# MusicLounge Jukebox for Plex — production image
+# MusicLounge Jukebox (Lite) for Plex — production image
 # Mirrors RiderMusic's Docker shape (Ubuntu 24.04 + gunicorn) for consistency
 # across the product family.
 

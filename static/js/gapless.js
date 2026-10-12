@@ -28,7 +28,7 @@
  */
 (function (root) {
   "use strict";
-  var VERSION = 2;
+  var VERSION = 3;
   var SILENT_WAV = "data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAACA";
 
   function create(opts) {
@@ -47,6 +47,7 @@
     var preloadedRef = null;
     var idleUnlocked = false, idleUnlocking = false;
     var earlyFired = false;
+    var gen = 0;   // bumped by every start(); lets stale async callbacks recognise they were superseded
 
     function same(a, b) { return a != null && b != null && String(a) === String(b); }
     function log() { if (debug) console.log.apply(console, ["[gapless]"].concat([].slice.call(arguments))); }
@@ -90,9 +91,17 @@
     }
     ["touchend", "click", "keydown"].forEach(function (ev) { document.addEventListener(ev, unlockIdle, true); });
 
+    function quiet() {
+      // Invariant: only the ACTIVE element may be sounding. Anything else that is
+      // playing is a stray (a race, a late promise) -- silence it.
+      if (!idleUnlocking && !idle.paused) { log("stray audio on the idle element; pausing it"); idle.pause(); }
+    }
+
     function start(ref) {
       var url = urlFor(ref);
+      var myGen = ++gen;
       earlyFired = false;
+      log("start", ref, "gen", myGen, same(preloadedRef, ref) && idle.readyState >= 3 ? "(swap)" : "(load)");
       if (same(preloadedRef, ref) && idle.readyState >= 3) {
         var incoming = idle, outgoing = active;
         log("handoff; outgoing remaining ms:", Math.round(((outgoing.duration || 0) - outgoing.currentTime) * 1000));
@@ -102,24 +111,27 @@
         outgoing.pause();                 // ...then stop the old one
         onSwap(active);
         if (p && p.catch) p.catch(function () {
+          if (myGen !== gen) return;   // superseded by a newer start(): ITS src/role changes caused this rejection
           // Couldn't start (e.g. never unlocked): undo the swap, load normally.
           log("incoming play() rejected; falling back");
           active = outgoing; idle = incoming;
           incoming.pause();
           onSwap(active);
           active.src = url;
-          active.play().catch(function (e) { onBlocked(e); });
+          active.play().catch(function (e) { if (myGen === gen) onBlocked(e); });
         });
+        quiet();
         return;
       }
+      quiet();
       active.src = url;
-      active.play().catch(function (e) { onBlocked(e); });
+      active.play().catch(function (e) { if (myGen === gen) onBlocked(e); });
     }
 
     var tick = 0;
     setInterval(function () {
       try {
-        if (++tick % 25 === 0) refresh();                 // ~every 500ms
+        if (++tick % 25 === 0) { refresh(); quiet(); }    // ~every 500ms
         if (earlyFired || preloadedRef === null || active.paused || active.seeking) return;
         var d = active.duration;
         if (!isFinite(d) || d < 3) return;

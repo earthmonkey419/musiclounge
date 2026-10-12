@@ -1,5 +1,5 @@
 """
-MusicLounge Jukebox for Plex -- DB initialization.
+MusicLounge Jukebox (Lite) for Plex -- DB initialization.
 
 Run once: python3 init_db.py
 

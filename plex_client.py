@@ -53,7 +53,7 @@ def _track_to_dict(track):
     return {
         "rating_key": track.ratingKey,
         "title": track.title,
-        "artist": track.grandparentTitle or track.originalTitle or "Unknown Artist",
+        "artist": track.originalTitle or track.grandparentTitle or "Unknown Artist",
         "album": track.parentTitle or "",
         "duration_sec": duration_sec,
     }

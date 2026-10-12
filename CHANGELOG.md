@@ -1,10 +1,16 @@
 # Changelog
 
-All notable changes to MusicLounge Jukebox for Plex are documented here.
+All notable changes to MusicLounge Jukebox (Lite) for Plex are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+### Changed
+- Renamed to MusicLounge Jukebox (Lite) for Plex
+
+### Fixed
+- Compilation/Various Artists tracks now show the real per-track artist (`originalTitle`) instead of the album artist
 
 ## [1.0.0]
 
