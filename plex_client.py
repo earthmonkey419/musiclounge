@@ -45,6 +45,19 @@ MOOD_BUCKETS = {
     "dance": ["dance", "disco", "electronic"],
     "chill": ["chill", "ambient", "downtempo", "lounge"],
     "rock": ["rock"],
+    "gospel": ["gospel", "spirituals", "hymn", "worship", "contemporary christian"],
+}
+
+
+# Tags that contain a bucket keyword but are not what a tap on that
+# bucket should return (verified against real musicmind.db tag counts).
+MOOD_BUCKET_EXCLUDED_TAGS = {
+    "gospel": {
+        "gospel-influenced r&b",
+        "gospel-influenced",
+        "gospel influence",
+        "gospel influences",
+    },
 }
 
 
@@ -129,6 +142,7 @@ def tracks_by_mood(mood_key, limit=12):
     keywords = MOOD_BUCKETS.get(mood_key.lower())
     if not keywords:
         return []
+    excluded = MOOD_BUCKET_EXCLUDED_TAGS.get(mood_key.lower(), set())
     section = get_music_section()
     results = []
     seen = set()
@@ -137,6 +151,7 @@ def tracks_by_mood(mood_key, limit=12):
         matching_tags = [
             g.title for g in all_genres
             if any(kw in g.title.lower() for kw in keywords)
+            and g.title.lower() not in excluded
         ]
         for tag in matching_tags:
             if len(results) >= limit:

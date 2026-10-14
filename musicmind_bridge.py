@@ -95,6 +95,7 @@ def search_tracks_page(query, offset=0, limit=20):
 
 def _mood_pool_from_musicmind(mood_key, pool_size=POOL_SIZE):
     keywords = plex_client.MOOD_BUCKETS.get(mood_key.lower(), [mood_key.lower()])
+    excluded = plex_client.MOOD_BUCKET_EXCLUDED_TAGS.get(mood_key.lower(), set())
 
     conn = _connect()
     try:
@@ -102,11 +103,18 @@ def _mood_pool_from_musicmind(mood_key, pool_size=POOL_SIZE):
         like_clauses = " OR ".join(["LOWER(tag) LIKE ?"] * len(keywords))
         params = [f"%{kw.lower()}%" for kw in keywords]
         tag_rows = conn.execute(
-            f"SELECT DISTINCT rating_key FROM track_tags WHERE {like_clauses}",
+            f"SELECT DISTINCT rating_key, tag FROM track_tags WHERE {like_clauses}",
             params,
         ).fetchall()
 
-        matched_keys = [row["rating_key"] for row in tag_rows]
+        matched_keys = []
+        _seen = set()
+        for row in tag_rows:
+            if row["tag"].strip().lower() in excluded:
+                continue
+            if row["rating_key"] not in _seen:
+                _seen.add(row["rating_key"])
+                matched_keys.append(row["rating_key"])
         if not matched_keys:
             return []
 
