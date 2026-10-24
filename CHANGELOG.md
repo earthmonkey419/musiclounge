@@ -6,10 +6,14 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Share links: recipients now see the artist on every track and the album in the Now Playing card, and can tap the album art to enlarge it
+
 ### Changed
 - Renamed to MusicLounge Jukebox (Lite) for Plex
 
 ### Fixed
+- Share creation: picking a search result no longer fails for titles containing an apostrophe (e.g. "Sgt. Pepper's")
 - Compilation/Various Artists tracks now show the real per-track artist (`originalTitle`) instead of the album artist
 
 ## [1.0.0]
