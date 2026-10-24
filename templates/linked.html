@@ -16,7 +16,7 @@
 <audio id="player" preload="auto"></audio>
 
 <div class="linked-player">
-  <img id="hero-art" class="art-lg" src="/art/{{ share['content_ref'] }}" onerror="this.style.opacity=0">
+  <img id="hero-art" class="art-lg" src="/art/{{ share['content_ref'] }}" onerror="this.style.opacity=0" onclick="openArt()" title="Tap to enlarge" style="cursor:zoom-in;">
   <h2 style="font-size:24px;">{{ content_title }}</h2>
   {% if content_artist %}<p style="color:var(--ink-soft); margin:4px 0 20px;">{{ content_artist }}</p>{% endif %}
 
@@ -29,7 +29,7 @@
   <div class="track-list">
     {% for t in tracks %}
     <div class="track-row" style="cursor:pointer;" onclick="playTrack({{ loop.index0 }})" id="track-row-{{ loop.index0 }}">
-      <span>{{ loop.index }}. {{ t["title"] }}</span>
+      <span><span>{{ loop.index }}. {{ t["title"] }}</span><span style="display:block; color:var(--ink-soft); font-size:13px; font-weight:400;">{{ t["artist"] }}</span></span>
       <span>{{ "%d:%02d"|format(t["duration_sec"] // 60, t["duration_sec"] % 60) }}</span>
     </div>
     {% else %}
@@ -45,12 +45,25 @@
   </div>
 </div>
 
+<div id="art-lightbox" onclick="closeArt()" style="display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.85); align-items:center; justify-content:center; padding:16px; cursor:zoom-out;">
+  <img id="art-lightbox-img" alt="Album art" style="max-width:min(92vw,900px); max-height:88vh; object-fit:contain; border-radius:12px;">
+</div>
+
 <button id="back-to-top" class="btn btn-round btn-primary" onclick="window.scrollTo({top:0, behavior:'smooth'})" title="Back to top" style="position:fixed; bottom:24px; right:24px; z-index:10; display:none;">⬆</button>
 
 <script src="{{ url_for('static', filename='js/gapless.js') }}?v=3"></script>
 <script>
 const TRACKS = {{ tracks|tojson }};
 const EXPIRES_AT = {{ share["expires_at"]|tojson }};
+
+function openArt() {
+  document.getElementById("art-lightbox-img").src = document.getElementById("hero-art").src;
+  document.getElementById("art-lightbox").style.display = "flex";
+}
+function closeArt() {
+  document.getElementById("art-lightbox").style.display = "none";
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeArt(); });
 let audioEl = document.getElementById("player");   // ACTIVE element; MLGapless swaps it on handoff
 const gapless = MLGapless.create({
   audio: audioEl,
@@ -105,7 +118,7 @@ function playTrack(i, fromShuffleAdvance) {
   currentIndex = i;
   gapless.start(TRACKS[i].rating_key);
   document.getElementById("now-playing-title").textContent = TRACKS[i].title;
-  document.getElementById("now-playing-artist").textContent = TRACKS[i].artist || "";
+  document.getElementById("now-playing-artist").textContent = [TRACKS[i].artist, TRACKS[i].album].filter(Boolean).join(" · ");
   highlightRow(i);
   document.getElementById("playpause-btn").textContent = "⏸";
 }
