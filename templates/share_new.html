@@ -97,6 +97,11 @@ function debouncedContentSearch() {
   searchTimer = setTimeout(runContentSearch, 350);
 }
 
+let currentResults = [];
+function escHtml(t) {
+  return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function runContentSearch() {
   const q = document.getElementById('content-search').value.trim();
   const el = document.getElementById('content-results');
@@ -112,10 +117,14 @@ function runContentSearch() {
         el.innerHTML = `<p style="color:var(--ink-soft); font-size:13px;">No matches.</p>`;
         return;
       }
-      el.innerHTML = items.map(item => `
-        <div class="queue-item" style="cursor:pointer;" onclick='pickContent(${JSON.stringify(item)}, this)'>
-          <div style="flex:1;">${item.title} <span style="color:var(--ink-soft); font-size:13px;">— ${item.subtitle || ''}</span></div>
+      currentResults = items;
+      el.innerHTML = items.map((item, i) => `
+        <div class="queue-item" style="cursor:pointer;" data-idx="${i}">
+          <div style="flex:1;">${escHtml(item.title)} <span style="color:var(--ink-soft); font-size:13px;">— ${escHtml(item.subtitle || '')}</span></div>
         </div>`).join('');
+      el.querySelectorAll('.queue-item').forEach(b => {
+        b.addEventListener('click', () => pickContent(currentResults[+b.dataset.idx], b));
+      });
     })
     .catch(console.error);
 }
