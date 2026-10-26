@@ -6,6 +6,12 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `SHARE_REQUIRES_LOGIN` setting (default `true`): creating share links now requires the host login, the same as starting a Room. Set it to `false` to keep the previous open behavior
+
+### Security
+- Share creation, search, and "Email It" were reachable without logging in, so anyone who could reach the app could browse the library, mint links, and send email through your SMTP settings. They are now gated by default (reported in issue #2). Recipients' `/linked/<token>` pages are unaffected
+
 ## [1.1.0] - 2026-10-24
 
 ### Added
