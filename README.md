@@ -32,9 +32,7 @@ Share Mode:  Recipient -> /linked/<token> -> their own <audio> element, independ
 - **Share Mode:** a host picks an album, playlist, or artist and mints a
   time-limited link (24/48/72 hours). The recipient opens `/linked/<token>`
   — a locked, single-item player, nothing else in the library exposed.
-  Creating links requires the host login by default; set
-  `SHARE_REQUIRES_LOGIN=false` if you want anyone who can reach the app to
-  be able to create them.
+  Creating links requires the host login, same as starting a Room.
 - Both modes proxy audio server-side, so the real Plex token never
   reaches a client browser.
 
