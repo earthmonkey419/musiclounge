@@ -6,6 +6,8 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-26
+
 ### Added
 - Room host can remove upcoming tracks from the queue (✕ on each row of the dashboard queue), matching Player
 
