@@ -371,4 +371,9 @@ def stream(rating_key):
     for h in ("Content-Range", "Content-Length", "Accept-Ranges"):
         if h in upstream.headers:
             resp.headers[h] = upstream.headers[h]
+    # Play inline (never prompt a save), don't let the browser sniff the
+    # type, and keep shared caches from holding an authorized stream.
+    resp.headers["Content-Disposition"] = "inline"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["Cache-Control"] = "private"
     return resp
