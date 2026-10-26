@@ -252,6 +252,25 @@ def api_queue_add():
         return jsonify({"error": "Something went wrong adding that track."}), 500
 
 
+@bp.route("/api/queue/remove", methods=["POST"])
+def api_queue_remove():
+    """Host-only: remove one upcoming track from the live room's queue.
+    The playing track is not in room_queue (it was popped when it started),
+    so this can only remove upcoming tracks; skipping stays a separate action."""
+    if not session.get("is_admin"):
+        return jsonify({"error": "Host only."}), 403
+    room_id, err = _resolve_action_room()
+    if err:
+        return err
+    body = request.get_json(silent=True) or {}
+    try:
+        queue_id = int(body.get("id"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid queue item."}), 400
+    removed = db.remove_from_queue(room_id, queue_id)
+    return jsonify({"ok": True, "removed": bool(removed)})
+
+
 @bp.route("/api/skip", methods=["POST"])
 def api_skip():
     room_id, err = _resolve_action_room()

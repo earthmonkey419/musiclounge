@@ -64,6 +64,7 @@
         <div class="queue-item">
           <span class="pos">{{ "%02d"|format(loop.index) }}</span><img class="art-sm" src="/art/{{ item['track_ref'] }}" onerror="this.style.opacity=0">
           <div style="flex:1;">{{ item["title"] }} <span style="color:var(--ink-soft);">— {{ item["artist"] }}</span></div>
+          <button type="button" class="queue-remove" data-id="{{ item['id'] }}" title="Remove from queue" aria-label="Remove from queue" style="margin-left:8px; flex-shrink:0; background:none; border:0; cursor:pointer; color:var(--ink-soft); font-size:16px; line-height:1; padding:8px;">✕</button>
         </div>
         {% else %}
         <p style="color:var(--ink-soft); font-size:14px;">Queue's empty — send guests to the join link below.</p>
@@ -212,6 +213,7 @@ function refreshState() {
           <div class="queue-item">
             <span class="pos">${String(i+1).padStart(2,"0")}</span><img class="art-sm" src="/art/${item.track_ref}" onerror="this.style.opacity=0">
             <div style="flex:1;">${item.title} <span style="color:var(--ink-soft);">— ${item.artist}</span></div>
+            <button type="button" class="queue-remove" data-id="${item.id}" title="Remove from queue" aria-label="Remove from queue" style="margin-left:8px; flex-shrink:0; background:none; border:0; cursor:pointer; color:var(--ink-soft); font-size:16px; line-height:1; padding:8px;">✕</button>
           </div>`).join("");
       }
       syncAudio(state);
@@ -227,6 +229,32 @@ function refreshState() {
 if (currentTrackRef && {{ (room["is_playing"] == 1)|tojson }}) {
   attemptPlay();
 }
+
+// Host removes an upcoming track. Delegated, so it covers both the
+// server-rendered rows and the ones the 4s poll re-renders.
+document.getElementById("queue-list").addEventListener("click", (e) => {
+  const btn = e.target.closest(".queue-remove");
+  if (!btn || btn.disabled) return;
+  const id = parseInt(btn.dataset.id, 10);
+  if (!id) return;
+  btn.disabled = true;
+  const row = btn.closest(".queue-item");
+  if (row) row.style.opacity = "0.4";
+  // The head of the queue is the gapless preload target: stop aiming at it
+  // BEFORE the request returns, so the engine can't hand off to a track
+  // that's about to be deleted. refreshState() re-aims at the new head.
+  if (row && row === document.querySelector("#queue-list .queue-item")) {
+    upNextRef = null;
+    gapless.refresh();
+  }
+  fetch("/api/queue/remove", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({id}),
+  })
+    .catch(console.error)
+    .finally(() => { minSeq = pollSeq + 1; refreshState(); });   // drop any poll that predates the removal
+});
 
 setInterval(refreshState, 4000);
 </script>
