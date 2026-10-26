@@ -1,12 +1,14 @@
 from functools import wraps
-from flask import session, redirect, url_for, jsonify
+from flask import session, redirect, url_for, jsonify, request
 
 
 def admin_required(f):
     @wraps(f)
     def wrapper(*a, **kw):
         if not session.get("is_admin"):
-            return redirect(url_for("admin.login"))
+            # Remember where they were headed so login can return them there.
+            target = request.full_path if request.query_string else request.path
+            return redirect(url_for("admin.login", next=target))
         return f(*a, **kw)
     return wrapper
 
