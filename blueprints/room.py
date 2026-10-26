@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 import config
 import db
 import plex_client
+import media_access
 import musicmind_bridge
 from auth import guest_required
 
@@ -205,12 +206,11 @@ def _room_state(room_id):
 
 @bp.route("/api/room-state")
 def api_room_state():
-    room_id = session.get("room_id")
-    if not room_id:
-        room = db.get_active_room()
-        room_id = room["session_id"] if room else None
-    if not room_id:
-        return jsonify({"error": "no active room"}), 404
+    # Requires a joined live room or the admin -- previously fell back to
+    # "whatever room is active" for anyone, with no session at all.
+    room_id, err = _resolve_action_room()
+    if err:
+        return err
     state = _room_state(room_id)
     return jsonify(state) if state else (jsonify({"error": "not found"}), 404)
 
@@ -250,6 +250,25 @@ def api_queue_add():
     except Exception:
         current_app.logger.exception("queue/add failed unexpectedly for rating_key=%r, room=%r", rating_key, room_id)
         return jsonify({"error": "Something went wrong adding that track."}), 500
+
+
+@bp.route("/api/queue/remove", methods=["POST"])
+def api_queue_remove():
+    """Host-only: remove one upcoming track from the live room's queue.
+    The playing track is not in room_queue (it was popped when it started),
+    so this can only remove upcoming tracks; skipping stays a separate action."""
+    if not session.get("is_admin"):
+        return jsonify({"error": "Host only."}), 403
+    room_id, err = _resolve_action_room()
+    if err:
+        return err
+    body = request.get_json(silent=True) or {}
+    try:
+        queue_id = int(body.get("id"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid queue item."}), 400
+    removed = db.remove_from_queue(room_id, queue_id)
+    return jsonify({"ok": True, "removed": bool(removed)})
 
 
 @bp.route("/api/skip", methods=["POST"])
@@ -321,6 +340,8 @@ def api_volume():
 
 @bp.route("/art/<rating_key>")
 def art(rating_key):
+    if not media_access.can_view_art(rating_key):
+        return "", 401
     try:
         thumb_path = plex_client.track_art_path(rating_key)
         if not thumb_path:
@@ -337,12 +358,14 @@ def art(rating_key):
         return "", 404
 
     resp = Response(upstream.content, content_type=upstream.headers.get("Content-Type", "image/jpeg"))
-    resp.headers["Cache-Control"] = "public, max-age=86400"
+    resp.headers["Cache-Control"] = "private, max-age=86400"
     return resp
 
 
 @bp.route("/stream/<rating_key>")
 def stream(rating_key):
+    if not media_access.can_stream(rating_key):
+        return "Not authorized", 401
     try:
         part_path = plex_client.track_stream_part(rating_key)
     except Exception:
@@ -367,4 +390,9 @@ def stream(rating_key):
     for h in ("Content-Range", "Content-Length", "Accept-Ranges"):
         if h in upstream.headers:
             resp.headers[h] = upstream.headers[h]
+    # Play inline (never prompt a save), don't let the browser sniff the
+    # type, and keep shared caches from holding an authorized stream.
+    resp.headers["Content-Disposition"] = "inline"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["Cache-Control"] = "private"
     return resp

@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, url_for, current_app
 
 import config
+from auth import admin_required, admin_api_required
 import db
 import plex_client
 from email_utils import send_share_email
@@ -9,12 +10,14 @@ bp = Blueprint("share", __name__)
 
 
 @bp.route("/", methods=["GET"])
+@admin_required
 def new_share():
     # Three-stage flow: what are you sharing / choose it / how long.
     return render_template("share_new.html", durations=config.SHARE_LINK_DURATIONS_HOURS)
 
 
 @bp.route("/api/search")
+@admin_api_required
 def api_share_search():
     content_type = request.args.get("type", "").strip().lower()
     q = request.args.get("q", "").strip()
@@ -28,6 +31,7 @@ def api_share_search():
 
 
 @bp.route("/create", methods=["POST"])
+@admin_api_required
 def create_share():
     body = request.get_json(silent=True) or {}
     content_type = body.get("content_type")
@@ -66,6 +70,7 @@ def create_share():
 
 
 @bp.route("/<token>/email", methods=["POST"])
+@admin_api_required
 def email_share(token):
     if not db.is_share_live(token):
         return jsonify({"error": "This link has expired or is invalid."}), 410

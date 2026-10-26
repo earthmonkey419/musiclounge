@@ -11,13 +11,19 @@
     <div class="icon">👥</div>
     <h2>Start a Room</h2>
     <p>Let everyone join the jukebox — scan a code, search the library, queue what plays next.</p>
+    {% if not session.get("is_admin") %}<p style="margin-top:10px; font-size:12px; color:var(--ink-soft);">🔒 Host login required</p>{% endif %}
   </a>
   <a class="mode-card share" href="{{ url_for('share.new_share') }}">
     <div class="icon">🎁</div>
     <h2>Share Some Music</h2>
     <p>Send an album, artist, or playlist as a private link — theirs to enjoy for a day or three.</p>
+    {% if not session.get("is_admin") %}<p style="margin-top:10px; font-size:12px; color:var(--ink-soft);">🔒 Host login required</p>{% endif %}
   </a>
 </div>
+
+<p style="text-align:center; margin-top: 28px; font-size: 14px; color: var(--ink-soft);">
+  Joining someone's room? <a href="{{ url_for('room.join') }}">Enter your code</a>
+</p>
 
 <p style="text-align:center; margin-top: 40px; font-size: 13px; color: var(--ink-soft);">
   Brought to you by the makers of MusicMind for Plex &amp; RiderMusic Jukebox

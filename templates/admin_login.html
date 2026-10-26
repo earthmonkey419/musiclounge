@@ -3,9 +3,11 @@
 {% block content %}
 {% include "partials/_wordmark.html" %}
 <div class="card surface-hi" style="max-width: 360px; margin: 60px auto;">
-  <h2 style="margin-bottom: 18px;">Host login</h2>
+  <h2 style="margin-bottom: 6px;">Host login</h2>
+  {% if login_reason %}<p style="color: var(--ink-soft); margin: 0 0 16px; font-size:14px;">{{ login_reason }}</p>{% endif %}
   {% if error %}<p style="color: var(--orange-deep); font-weight:700; margin-bottom:14px;">{{ error }}</p>{% endif %}
   <form method="post" style="display:flex; flex-direction:column; gap:14px;">
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
     <input type="password" name="password" placeholder="Admin password" autofocus>
     <button type="submit" class="btn btn-primary">Log in</button>
   </form>

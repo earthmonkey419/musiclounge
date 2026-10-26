@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, Response, current_app
 import io
+from urllib.parse import urlparse
 import csv
 import base64
 from datetime import datetime
@@ -24,14 +25,38 @@ ROOM_CSV_COLUMNS = [
 ]
 
 
+# Where login may send you afterwards, and what to say about why you're
+# being asked. Only same-site paths are honored (no open redirects).
+_LOGIN_REASONS = (
+    ("/admin/share", "Log in to share some music."),
+    ("/admin/dashboard", "Log in to start a room."),
+    ("/admin/stats", "Log in to see your stats."),
+)
+
+
+def _safe_next(target):
+    if not target or not target.startswith("/") or target.startswith("//") or "\\" in target:
+        return None
+    parsed = urlparse(target)
+    if parsed.scheme or parsed.netloc or parsed.path.startswith("/admin/login"):
+        return None
+    return target
+
+
+def _login_context(raw_next):
+    nxt = _safe_next(raw_next)
+    reason = next((text for prefix, text in _LOGIN_REASONS if nxt and nxt.startswith(prefix)), None)
+    return {"next_url": nxt, "login_reason": reason}
+
+
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         if db.verify_admin_password(request.form.get("password", "")):
             session["is_admin"] = True
-            return redirect(url_for("admin.dashboard"))
-        return render_template("admin_login.html", error="Wrong password.")
-    return render_template("admin_login.html")
+            return redirect(_safe_next(request.form.get("next")) or url_for("admin.dashboard"))
+        return render_template("admin_login.html", error="Wrong password.", **_login_context(request.form.get("next")))
+    return render_template("admin_login.html", **_login_context(request.args.get("next")))
 
 
 @bp.route("/logout")

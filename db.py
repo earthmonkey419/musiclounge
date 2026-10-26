@@ -252,6 +252,21 @@ def pop_next(session_id):
     return row
 
 
+def remove_from_queue(session_id, queue_id):
+    """Host removes a not-yet-played track from this room's queue. Scoped by
+    session_id so one room can never touch another room's rows, and by
+    played = 0 so it can't alter history. Returns True if a row was removed."""
+    conn = get_db()
+    cur = conn.execute(
+        "DELETE FROM room_queue WHERE id = ? AND session_id = ? AND played = 0",
+        (queue_id, session_id),
+    )
+    conn.commit()
+    removed = cur.rowcount > 0
+    conn.close()
+    return removed
+
+
 # --- Actions log ----------------------------------------------------------
 
 def log_action(session_id, action_type, detail=""):
@@ -315,6 +330,19 @@ def is_share_live(token):
     if row["expires_at"] <= _now():
         return False
     return True
+
+
+def has_live_share_for_ref(content_ref):
+    """True if some un-revoked, un-expired share is for this exact item.
+    Lets that item's cover art be fetched without a session (share emails
+    and link previews load it anonymously)."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT 1 FROM shares WHERE content_ref = ? AND revoked = 0 AND expires_at > ? LIMIT 1",
+        (str(content_ref), _now()),
+    ).fetchone()
+    conn.close()
+    return row is not None
 
 
 def record_share_access(token):
