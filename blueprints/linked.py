@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, current_app
 
 import db
 import plex_client
+import media_access
 
 bp = Blueprint("linked", __name__)
 
@@ -26,6 +27,7 @@ def view_share(share_token):
         artist = share["content_artist"]
         tracks = []
 
+    media_access.remember_share(share_token, share["content_ref"], tracks)
     db.record_share_access(share_token)
 
     return render_template(

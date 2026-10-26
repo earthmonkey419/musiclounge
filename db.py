@@ -317,6 +317,19 @@ def is_share_live(token):
     return True
 
 
+def has_live_share_for_ref(content_ref):
+    """True if some un-revoked, un-expired share is for this exact item.
+    Lets that item's cover art be fetched without a session (share emails
+    and link previews load it anonymously)."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT 1 FROM shares WHERE content_ref = ? AND revoked = 0 AND expires_at > ? LIMIT 1",
+        (str(content_ref), _now()),
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
 def record_share_access(token):
     conn = get_db()
     conn.execute(
