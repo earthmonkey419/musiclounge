@@ -11,10 +11,23 @@ A self-hosted jukebox for your Plex music library — from the makers of
 Two ways to share your library: **Room Mode**, a shared queue people join
 with a code and DJ together in real time, and **Share Mode**, a private
 link to a single album, playlist, or artist that one person streams on
-their own schedule. No login, no app install, either way.
+their own schedule. The host logs in to start a Room or create a link;
+guests and link recipients need no login and no app install.
 
-**Status: v1 feature-locked -- bug fixes only.** See
-[`MUSICLOUNGE-SCOPE.md`](./MUSICLOUNGE-SCOPE.md) for the full design.
+> **Which MusicLounge app should I use?** We recommend
+> **[MusicLounge Player for Plex](https://github.com/earthmonkey419/musicloungeplayerforplex)**
+> ([showcase site](https://musicloungeplayer.vp-fun.com)). Player is the full
+> app: it does everything Jukebox (Lite) does, including Room Mode and Share
+> Mode, and adds personal search and browse, playlists, a persistent queue,
+> radio, and more. It is also where new features land first. Jukebox (Lite) is
+> the pared-down option for when all you want is to start a room or send a
+> link, with no personal library browsing. If you are starting fresh, start
+> with Player.
+
+**Status: stable, maintained as the lite sibling of Player.** Latest release:
+v1.1.0 (see [`CHANGELOG.md`](./CHANGELOG.md)). Jukebox (Lite) gets bug fixes and
+select ports of Player's Room Mode and Share Mode improvements; new features
+are built in Player first.
 
 ## How it works
 
@@ -32,9 +45,25 @@ Share Mode:  Recipient -> /linked/<token> -> their own <audio> element, independ
 - **Share Mode:** a host picks an album, playlist, or artist and mints a
   time-limited link (24/48/72 hours). The recipient opens `/linked/<token>`
   — a locked, single-item player, nothing else in the library exposed.
-  Creating links requires the host login, same as starting a Room.
+  Recipients see the artist on every track and a Now Playing card, and can
+  tap the album art to enlarge it. Creating links requires the host login,
+  same as starting a Room.
 - Both modes proxy audio server-side, so the real Plex token never
   reaches a client browser.
+- **Access control:** `/stream/<id>` and `/art/<id>` don't answer anonymous
+  requests. Audio is limited to the host and to tracks in a share link that
+  browser has opened (checked against the live link on every request, so
+  expiry and "End this link" cut it off immediately); cover art is also
+  available to guests in a live Room. Direct navigation to a stream URL is
+  refused. This is access control, not DRM.
+
+Also included:
+
+- **Gapless playback** between tracks, using the same engine as Player
+- **Host dashboard** with a real-time queue; the host can remove upcoming
+  tracks, and guests can add, with one authoritative "Now Playing"
+- **Mood buckets** and **shuffle** for browsing, and QR codes for joining a Room
+- **Stats page**, and admin password reset by emailed single-use link
 
 ## Requirements
 
@@ -235,3 +264,10 @@ Cloudflare:
 ## License
 
 MIT
+
+## Acknowledgments
+
+Part of the [Verbena Projects](https://vp-fun.com) family of Plex tools, alongside
+[MusicLounge Player for Plex](https://github.com/earthmonkey419/musicloungeplayerforplex)
+(the recommended app), [MusicMind for Plex](https://musicmind.vp-fun.com/), and
+[RiderMusic Jukebox for Plex](https://ridermusic.vp-fun.com/).
